@@ -67,7 +67,7 @@ details .body{padding:0 16px 14px}
 .seg button{min-height:44px;padding:0 16px;background:none;border:0;color:var(--txt);font-size:16px}
 .seg button.on{background:var(--acc);color:#05231f}
 .tag{font-size:13px;padding:2px 8px;border-radius:10px;background:#5a3b10;color:#ffd79a;margin-left:6px}
-.ref{font-weight:400;font-size:15px;color:#6f9993;opacity:.75;margin-left:8px}
+.ref{font-weight:400;font-size:15px;color:var(--dim);margin-left:8px}
 .theme{background:var(--bg2)}
 table.rv{width:100%;border-collapse:collapse;font-size:16px}table.rv td,table.rv th{padding:8px 4px;border-bottom:1px solid var(--line);text-align:left}
 input[type=time]{width:100%;background:var(--bg2);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:18px;min-height:52px}
@@ -97,6 +97,17 @@ body.test #stopBtn{top:44px}
 .modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px}
 .modal.show{display:flex}
 .modal .card{max-width:480px;width:100%;background:var(--bg2)}
+input[type=range].unset{opacity:.45}
+.sval.unset{color:var(--dim);font-size:20px;font-weight:400;padding:10px 0}
+.gear svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.8}
+.today{border-color:var(--acc)}
+.today h2{margin-top:0}
+.done-line{font-size:18px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.split div{background:var(--bg2);border-radius:12px;padding:10px;text-align:center}
+.split b{display:block;font-size:24px;color:var(--acc)}
+details.wk{background:transparent;border:0;margin:6px 0}
+details.wk>summary{background:var(--card);border:1px solid var(--line);border-radius:14px}
 </style>
 </head>
 <body>
@@ -120,6 +131,7 @@ var REAL_KEY="breathe_data", TEST_KEY="breathe_test", MODE_KEY="breathe_testmode
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
 function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
+try{for(var _i=localStorage.length-1;_i>=0;_i--){var _k=localStorage.key(_i);if(_k&&_k.indexOf("breathe_fired_")===0)localStorage.removeItem(_k);}}catch(e){}
 var testMode = lsGet(MODE_KEY)==="1";
 var fastTimings = lsGet(FAST_KEY)==="1";
 function key(){return testMode?TEST_KEY:REAL_KEY;}
@@ -127,7 +139,7 @@ function key(){return testMode?TEST_KEY:REAL_KEY;}
 function defaultData(){
   return {
     version:1,
-    settings:{pace:"normal",breathTones:true,voiceCues:true,showHolds:false,extraRound:false,bodyScan:false,morningTime:null,middayTime:null,eveningTime:null},
+    settings:{pace:"normal",breathTones:true,phaseChimes:true,voiceCues:true,showHolds:false,extraRound:false,bodyScan:false,morningTime:null,middayTime:null,eveningTime:null},
     meta:{startedAt:null,lastFullSafety:null,signal:[],review28Done:false,maintenanceMode:null},
     baseline:{date:null,sleep:null,irritability:null,switchOff:null,stress:null},
     sessions:[],sighs:[],weekly:[],evenings:[],notes:""
@@ -185,17 +197,21 @@ function tone(f1,f2,dur,vol){
 function breathTone(inhale,dur){if(!data.settings.breathTones)return;if(inhale)tone(220,330,dur*0.95,0.06);else tone(330,200,dur*0.95,0.05);}
 var CHIMES={"Two more.":[660],"Last breath. Let go.":[660,880],"Let go and hold.":[523,392],"Breathe in whenever you're ready.":[440],"Breathe in. Hold.":[392,523,659],"Release.":[659,392],"Round two.":[523,523],"Round three.":[523,523,523],"Last round.":[784,659,523]};
 function chime(text){var seq=CHIMES[text]||[600];seq.forEach(function(f,i){setTimeout(function(){tone(f,f,0.6,0.09);},i*280);});}
+/* Chimes always mark phase changes (voice can fail silently on phones without a TTS voice). Voice is added on top. */
 function say(text){
-  if(!data.settings.voiceCues)return;
-  var ok=false;
-  try{
-    if("speechSynthesis" in window && window.SpeechSynthesisUtterance && speechSynthesis.getVoices){
-      speechSynthesis.cancel();
-      var u=new SpeechSynthesisUtterance(text);u.rate=0.85;u.pitch=0.95;u.volume=0.8;
-      speechSynthesis.speak(u);ok=true;
-    }
-  }catch(e){ok=false;}
-  if(!ok)chime(text);
+  var chimed=data.settings.phaseChimes!==false;
+  if(chimed)chime(text);
+  if(!data.settings.voiceCues){if(!chimed)chime(text);return;}
+  var delay=chimed?(CHIMES[text]||[0]).length*280+250:0;
+  setTimeout(function(){
+    try{
+      if("speechSynthesis" in window && window.SpeechSynthesisUtterance){
+        speechSynthesis.cancel();
+        var u=new SpeechSynthesisUtterance(text);u.rate=0.85;u.pitch=0.95;u.volume=0.8;
+        speechSynthesis.speak(u);
+      }
+    }catch(e){}
+  },delay);
 }
 
 /* ============ WAKE LOCK ============ */
@@ -209,12 +225,12 @@ var MOODS=["Calm","Clear","Settled","Restless","Heavy","Emotional","Tired"];
 var Q3=["Where did I feel tension release?","What helped me stay calm when my mind became busy?","What's one thing I'll keep doing after this challenge?"];
 var QROT=["What did I notice today that I didn't notice yesterday?","Where in my body do I hold stress?","What am I carrying into today?","What felt different in the hold today?","What would a calmer version of today look like?","What made it easy or hard to show up this morning?","Where did my mind go during the breaths?","What's one thing I can let go of today?","What do I need today?","How did yesterday's stress show up in my body?"];
 function questionFor(day){if(day>=1&&day<=3)return Q3[day-1];var d=Math.max(4,day);return QROT[(d-4)%QROT.length];}
-var SAFETY_FULL="Practice only sitting or lying down in a comfortable place — never while driving, standing, or in or near water. Never force the breath or the hold. Stop and breathe normally if you feel unwell. Consult a doctor first if you are pregnant or have epilepsy, heart disease, high blood pressure or another medical condition. If you're new or anxious, start gently.";
+var SAFETY_FULL="Practise only sitting or lying down in a comfortable place — never while driving, standing, or in or near water. Never force the breath or the hold. Stop and breathe normally if you feel unwell. Consult a doctor first if you are pregnant or have epilepsy, heart disease, high blood pressure or another medical condition. If you're new or anxious, start gently.";
 function paras(t){return t.split("\n").map(function(p){return "<p>"+esc(p)+"</p>";}).join("");}
 var LEARN=[
 ["What this practice is",paras("A breathing method with three parts, repeated over several rounds: a set of deep, fast breaths; a relaxed hold after breathing out; and a short recovery hold after breathing in. It comes from the Wim Hof Method, but the pattern itself is simple and can be done anywhere you can sit or lie down safely."),"what"],
 ["How it works — what's happening in your body",paras("The 30 breaths: your blood is already about 98% saturated with oxygen, so deep breathing adds very little oxygen. What it mainly does is blow off carbon dioxide (CO2). Lower CO2 makes your blood slightly more alkaline. That is why you may feel tingling, light-headedness or a buzzing in your hands and face.\nThe hold: the urge to breathe is driven mostly by rising CO2, not falling oxygen. Because you've lowered your CO2, you can hold much longer than usual without strain. Meanwhile your oxygen level falls — sometimes a lot — without you feeling it. This is why the method must never be done in water or while driving: you can lose consciousness without warning.\nThe recovery breath: refills your lungs and brings oxygen back up quickly.\nThe stress effect: the fast breathing is a short, deliberate burst of arousal, and your nervous system tends to swing towards calm afterwards. Many people describe feeling clear and settled after the final round."),"how"],
-["What the evidence says (honestly)",paras("The best-known study (Kox et al., PNAS, 2014) found that people trained in this method released more adrenaline and had milder flu-like symptoms when injected with a bacterial toxin. This shows breathing can influence the stress and immune response.\nFor everyday stress and mood, the evidence is smaller. A 2023 Stanford study (Balban et al., Cell Reports Medicine) compared daily breathing practices over a month. All of them improved mood, but slow 'cyclic sighing' did slightly better than fast breathing with holds.\nIn short: this is a useful tool, not a cure. If stress or anxiety is persistent or severe, talk to a doctor."),"evidence"],
+["What the evidence says (honestly)",paras("The best-known study (Kox et al., PNAS, 2014) found that people trained in this method released more adrenaline and had milder flu-like symptoms when injected with a bacterial toxin. This shows breathing can influence the stress and immune response.\nFor everyday stress and mood, the evidence is smaller. A 2023 Stanford study (Balban et al., Cell Reports Medicine) compared daily breathing practices over a month. All of them improved mood, but slow 'cyclic sighing' did slightly better than fast breathing with holds. The difference between the breathing methods was small; the clearer finding was that daily breathing practice lifted mood more than mindfulness meditation did.\nIn short: this is a useful tool, not a cure. If stress or anxiety is persistent or severe, talk to a doctor."),"evidence"],
 ["Is 3 days enough?",paras("Three days is enough to feel the immediate calming effect and to learn the technique. It is not enough for lasting change. The studies behind the bigger claims used 10 days to 4 weeks of daily practice, and habits usually take around two months to become automatic. So the 3-Day Challenge is the opening of Week 1, not a separate course. Four weeks is a fair test — and the snapshot you took before Day 1 is what you'll compare against."),"three"],
 ["The 4-week programme",paras("Week 1 — Foundation: the morning practice every day. Learn the technique.\nWeek 2 — Consistency: fix a practice time and add a one-minute body scan.\nWeek 3 — A tool for the day: learn your early-warning signal and practise cyclic sighing daily at midday.\nWeek 4 — Integration: an evening check-in on how early you caught stress building.\nDay 28 — Review: compare your four numbers against Day 0 and decide how to continue."),"programme"],
 ["Cyclic sighing",paras("A slow breathing pattern: two inhales through the nose (one full, one short top-up), then a long exhale through the mouth. The long exhale slows the heart rate and settles the nervous system. In the 2023 Stanford study, five minutes a day of cyclic sighing improved mood slightly more than the other breathing practices tested. It involves no fast breathing and no breath holds, so it is safe to use sitting or standing, at work, or anywhere during the day."),"sighing"],
@@ -245,12 +261,18 @@ function render(){
 }
 
 /* ============ SLIDER ============ */
+/* Sliders start with no value so the starting position doesn't anchor the answer. */
 function sliderHTML(id,label,lo,hi,val,ref){
-  return '<div class="card"><h3>'+esc(label)+(ref!=null?' <span class="ref">Day 0: '+esc(ref)+'</span>':'')+'</h3><div class="sval" id="'+id+'_v">'+val+'</div>'+
-  '<input type="range" min="1" max="10" step="1" value="'+val+'" id="'+id+'" aria-label="'+esc(label)+'">'+
+  return '<div class="card"><h3>'+esc(label)+(ref!=null?' <span class="ref">Day 0: '+esc(ref)+'</span>':'')+'</h3><div class="sval unset" id="'+id+'_v">Tap the line to choose</div>'+
+  '<input type="range" min="1" max="10" step="1" value="5" id="'+id+'" class="unset" data-set="0" aria-label="'+esc(label)+'">'+
   '<div class="slab"><span>'+esc(lo)+'</span><span>'+esc(hi)+'</span></div></div>';
 }
-function bindSlider(id){var s=$(id);if(s)s.oninput=function(){$(id+"_v").textContent=s.value;};}
+function bindSlider(id,onSet){var s=$(id);if(!s)return;
+  function mark(){s.dataset.set="1";s.classList.remove("unset");var v=$(id+"_v");v.classList.remove("unset");v.textContent=s.value;if(onSet)onSet();}
+  ["input","change","pointerup","keyup"].forEach(function(ev){s.addEventListener(ev,mark);});}
+function sliderSet(id){var s=$(id);return !!(s&&s.dataset.set==="1");}
+/* Bind several sliders; the button stays disabled until every one has been chosen. */
+function requireSliders(ids,btnId){var b=$(btnId);function chk(){if(b)b.disabled=!ids.every(sliderSet);}ids.forEach(function(i){bindSlider(i,chk);});chk();}
 
 /* ============ ONBOARDING ============ */
 var obStep=1;
@@ -266,7 +288,7 @@ function onboardHTML(){
 }
 function bindOnboard(){
   if(obStep===1){$("obNext").onclick=function(){obStep=2;render();window.scrollTo(0,0);};}
-  else if(obStep===2){["b_sleep","b_irr","b_sw","b_st"].forEach(bindSlider);
+  else if(obStep===2){requireSliders(["b_sleep","b_irr","b_sw","b_st"],"obSave");
     $("obSave").onclick=function(){
       data.baseline={date:new Date().toISOString(),sleep:+$("b_sleep").value,irritability:+$("b_irr").value,switchOff:+$("b_sw").value,stress:+$("b_st").value};
       if(!data.meta.startedAt)data.meta.startedAt=new Date().toISOString();
@@ -280,45 +302,66 @@ function bindOnboard(){
 /* ============ PRACTICE HOME ============ */
 function practiceHTML(){
   var n=countedCount(), h='';
-  h+='<div class="hdr"><h1>Breathe</h1><button class="gear" id="gear" aria-label="Settings">⚙</button></div>';
-  h+=installCardHTML();
-  h+=reminderBanners();
-  var th=themeFor(n);h+='<div class="card theme"><div class="dim">'+esc(th[0])+'</div><div>'+esc(th[1])+'</div></div>';
-  if(n>=28&&data.meta.review28Done&&!data.meta.seen.maint)h+='<div class="card"><p>Four weeks done. From here, the practice is yours.</p><button class="btn sec" id="maintOk">OK</button></div>';
-  if(n>=7&&!data.meta.seen.w2)h+='<div class="card"><p>Pick your practice time. A fixed time makes this automatic.</p><input type="time" id="mTime" value="'+esc(data.settings.morningTime||"07:00")+'"><button class="btn" id="mTimeSave">Save</button></div>';
+  h+='<div class="hdr"><h1>Breathe</h1><button class="gear" id="gear" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>';
+  var mm=data.meta.maintenanceMode, sighOnly=n>=28&&mm==="sighing", done=countedToday(), subToday=subSighToday();
+  /* ---- TODAY: the reason the app is opened, always first ---- */
+  h+='<div class="card today">';
   var last=lastSessionDate();
-  if(last&&daysBetween(last,new Date())>=3) h+='<div class="card"><p>Welcome back. Pick up where you left off.</p></div>';
-  if(n<3){
+  if(!done&&last&&daysBetween(last,new Date())>=3) h+='<p>Welcome back. Pick up where you left off.</p>';
+  if(n<3||(n===3&&done)){
     var names=["Breathe & Reset","Breathe & Repeat","Breathe & Continue"];
     h+='<h2>3-Day Challenge</h2>';
     for(var i=0;i<3;i++){
-      var d=i+1, done=d<=n, active=d===n+1;
+      var d=i+1, dn=d<=n, active=d===n+1;
       var s=data.sessions.filter(function(x){return x.counted&&x.programmeDay===d;})[0];
-      h+='<div class="card daycard'+(done?' done':'')+(active?' active':'')+'"><div class="num">'+(done?'✓':d)+'</div><div><div><strong>Day '+d+'</strong> · '+esc(names[i])+'</div>'+
-        (done&&s?'<div class="dim">'+esc(s.before)+' → '+esc(s.after)+'</div>':'')+(active&&countedToday()?'<div class="dim">Today\'s session is done.</div>':'')+'</div></div>';
+      h+='<div class="card daycard'+(dn?' done':'')+(active&&!done?' active':'')+'"><div class="num">'+(dn?'✓':d)+'</div><div><div><strong>Day '+d+'</strong> · '+esc(names[i])+'</div>'+
+        (dn&&s?'<div class="dim">'+esc(s.before)+' → '+esc(s.after)+'</div>':'')+'</div></div>';
     }
-  } else if(n<28){
-    h+='<h2>Week '+weekOf(n+1)+' · Day '+(n+1)+'</h2>';
-  } else if(n===28 && !countedToday()){
-    h+='<h2>Maintenance</h2>';
+  } else if(n<28||(n===28&&done)){
+    h+='<h2>Week '+weekOf(done?n:n+1)+' · Day '+(done?n:n+1)+'</h2>';
   } else {
     h+='<h2>Maintenance</h2>';
   }
-  var mm=data.meta.maintenanceMode, sighOnly=n>=28&&mm==="sighing";
-  if(n>=28&&mm==="3-4")h+='<div class="card"><p>This week: '+thisWeekCount()+' of 3–4</p></div>';
-  if(n>=14&&sighOnly)h+=middayCardHTML();
+  var th=themeFor(done?Math.max(0,n-1):n),tn=th[0].replace(/^Week \d+ · /,"");h+='<p class="dim" style="margin-top:0">'+(tn==="Maintenance"?'':esc(tn)+' — ')+esc(th[1])+'</p>';
+  if(n>=28&&mm==="3-4")h+='<p>This week: '+thisWeekCount()+' of 3–4</p>';
+  if(done){
+    var td=data.sessions.filter(function(x){return x.counted&&dayKey(x.date)===dayKey();})[0];
+    h+='<p class="done-line">✓ Today\'s session is done'+(td&&td.before!=null?' · '+esc(td.before)+' → '+esc(td.after):'')+'.</p><p class="dim">Extra sessions are logged but don\'t move the programme forward.</p>';
+  } else if(subToday){
+    h+='<p class="done-line">✓ Sigh day logged.</p><p class="dim">It keeps the habit going; the programme day moves on with your next lying-down session.</p>';
+  }
+  if(sighOnly)h+=middayCardHTML();
+  var prim=!done&&!subToday&&!sighOnly;
+  h+='<button class="btn'+(prim?'':' sec')+'" id="goFull">Full session (about '+estimate("full")+')</button>';
+  h+='<button class="btn sec" id="goShort">Short session (about '+estimate("short")+')</button>';
+  if(!done&&!subToday)h+='<button class="btn sec" id="goSub">Can\'t lie down today? Do a 5-minute sigh session</button>';
+  h+='</div>';
+  /* ---- the rest of the day ---- */
+  if(n>=14&&!sighOnly)h+=middayCardHTML();
+  if(n>=14)h+='<button class="btn sec" id="goSigh">Sigh — calm in a minute</button>';
   if(n>=21)h+=eveningCardHTML();
+  /* ---- one-off cards ---- */
+  if(n>=28&&data.meta.review28Done&&!data.meta.seen.maint)h+='<div class="card"><p>Four weeks done. From here, the practice is yours.</p><button class="btn sec" id="maintOk">OK</button></div>';
+  if(n>=7&&!data.meta.seen.w2)h+='<div class="card"><p>Pick your practice time. A fixed time makes this automatic.</p><input type="time" id="mTime" value="'+esc(data.settings.morningTime||"07:00")+'"><button class="btn" id="mTimeSave">Save</button></div>';
+  h+=installCardHTML();
+  h+=reminderBanners();
   h+='<p class="dim">The practice stays the same each day. What changes is what you notice.</p>';
-  h+='<button class="btn'+(sighOnly?' sec':'')+'" id="goFull">Full session (about 12–15 min)</button>';
-  h+='<button class="btn sec" id="goShort">Short session (about 7 min)</button>';
-  if(n>=14){h+='<button class="btn sec" id="goSigh">Sigh — calm in a minute</button>';if(!sighOnly)h+=middayCardHTML();}
   h+='<div class="badges"><span class="badge">10–15 min daily</span><span class="badge">Empty stomach, within an hour of waking</span><span class="badge">No equipment</span></div>';
   return h;
 }
+/* Session length from the current settings: 30 breaths + a 1–2 min hold + 15 s recovery + 10 s pause per round, plus check-ins. */
+function estimate(type){
+  var inS=data.settings.pace==="slow"?3:2, rounds=type==="short"?2:(data.settings.extraRound?4:3);
+  var scan=type==="full"&&bodyScanEnabled()?60:0, extra=90+scan, br=30*2*inS;
+  var lo=Math.round((rounds*(br+60+25)-10+extra)/60), hi=Math.round((rounds*(br+120+25)-10+extra)/60);
+  return lo+"–"+hi+" min";
+}
+function subSighToday(){return todayHas(data.sighs,function(x){return x.sub;});}
 function bindPractice(){
   $("gear").onclick=function(){view="settings";render();window.scrollTo(0,0);};
   $("goFull").onclick=function(){startFlow("full");};
   $("goShort").onclick=function(){startFlow("short");};
+  var gs=$("goSub");if(gs)gs.onclick=function(){startSigh(false,5,true);};
   bindPhase2Home();
   bindInstall();
 }
@@ -340,7 +383,12 @@ function logHTML(){
   h+='</div>'+progressHTML()+'<h2>Sessions</h2>';
   var list=data.sessions.slice().sort(function(a,c){return new Date(c.date)-new Date(a.date);});
   if(!list.length)h+='<p class="dim">No sessions yet.</p>';
+  var curW=null,firstW=true;
   list.forEach(function(s){
+    var w=weekOf(Math.max(1,s.programmeDay||1));
+    if(w!==curW){if(curW!==null)h+='</div></details>';curW=w;
+      var cnt=list.filter(function(x){return weekOf(Math.max(1,x.programmeDay||1))===w;}).length;
+      h+='<details class="wk"'+(firstW?' open':'')+'><summary>Week '+w+(w>4?' · maintenance':'')+' <span class="dim" style="font-weight:400">· '+cnt+' session'+(cnt>1?'s':'')+'</span></summary><div class="body">';firstW=false;}
     h+='<div class="card"><div class="dim">'+esc(fmtDate(s.date))+'</div><div><strong>Day '+esc(s.programmeDay)+'</strong> · '+(s.type==="short"?"short":"full")+
       (!s.completed?'<span class="tag">stopped</span>':(!s.counted?'<span class="tag ex">extra</span>':''))+'</div>';
     h+='<div>'+(s.before!=null?esc(s.before):'–')+' → '+(s.after!=null?esc(s.after):'–')+'</div>';
@@ -349,6 +397,7 @@ function logHTML(){
     if(data.settings.showHolds&&s.holds&&s.holds.length)h+='<div class="dim">Holds: '+s.holds.map(fmtSec).join(" · ")+'</div>';
     h+='</div>';
   });
+  if(curW!==null)h+='</div></details>';
   h+='<h2>Notes</h2><textarea id="notes" placeholder="Notes">'+esc(data.notes)+'</textarea>';
   return h;
 }
@@ -361,6 +410,7 @@ function settingsHTML(){
   h+='<div class="card">';
   h+='<div class="toggle"><span>Breathing pace</span><div class="seg"><button id="pN" class="'+(s.pace!=="slow"?"on":"")+'">normal</button><button id="pS" class="'+(s.pace==="slow"?"on":"")+'">slow</button></div></div>';
   h+='<div class="toggle"><span>Breath tones</span>'+swHTML("sTones",s.breathTones)+'</div>';
+  h+='<div class="toggle"><span>Phase chimes<br><span class="dim" style="font-size:15px">A distinct sound at each change, so you can keep your eyes closed.</span></span>'+swHTML("sChime",s.phaseChimes!==false)+'</div>';
   h+='<div class="toggle"><span>Voice cues</span>'+swHTML("sVoice",s.voiceCues)+'</div>';
   h+='<div class="toggle"><span>Show hold times<br><span class="dim" style="font-size:15px">Hold times are hidden so you don\'t compete with them.</span></span>'+swHTML("sHolds",s.showHolds)+'</div>';
   h+=settings2HTML();
@@ -381,6 +431,7 @@ function bindSettings(){
   $("pS").onclick=function(){s.pace="slow";save();render();};
   $("sTones").onclick=function(){s.breathTones=!s.breathTones;save();render();};
   $("sVoice").onclick=function(){s.voiceCues=!s.voiceCues;save();render();};
+  $("sChime").onclick=function(){s.phaseChimes=(s.phaseChimes===false);save();render();};
   $("sHolds").onclick=function(){s.showHolds=!s.showHolds;save();render();};
   bindSettings2();
   $("exp").onclick=exportData;
@@ -486,6 +537,10 @@ function fillSample(){
     cal.setDate(cal.getDate()+1);
   }
   data.notes="Sample notes for testing.";
+  var lastD=new Date(lastSessionDate()),y=new Date(now);y.setDate(y.getDate()-1);
+  var shift=daysBetween(lastD,y)*86400000;
+  if(shift){var mv=function(o){if(o&&o.date)o.date=new Date(new Date(o.date).getTime()+shift).toISOString();};
+    data.sessions.forEach(mv);data.sighs.forEach(mv);data.weekly.forEach(mv);data.evenings.forEach(mv);mv(data.baseline);data.meta.startedAt=data.baseline.date;}
   save();
 }
 
@@ -506,15 +561,31 @@ function startFlow(type){
     sessShow('<h2>Safety</h2><p>Sitting or lying down, and nowhere near water?</p><button class="btn" id="safeOk">Yes</button><button class="btn sec" id="cancel">Cancel</button>');
     $("safeOk").onclick=beforeStep;
   }
-  $("cancel").onclick=function(){S=null;sessHide();};
+  $("cancel").onclick=cancelSess;
+  pushSess();
 }
+/* Session overlay and the phone's back button: entering a session adds a history entry, so Back stops the session instead of leaving the app. */
+var ignorePop=false;
+function pushSess(){try{if(!(history.state&&history.state.sess))history.pushState({sess:1},"");}catch(e){}}
+function leaveSess(){sessHide();try{if(history.state&&history.state.sess){ignorePop=true;history.back();}}catch(e){}}
+function cancelSess(){clearT();try{speechSynthesis.cancel();}catch(e){}if(S&&S.running)lockOff();S=null;leaveSess();render();}
+window.addEventListener("popstate",function(){
+  if(ignorePop){ignorePop=false;return;}
+  if(!S){sessHide();return;}
+  if(S.sigh){if(S.running){sighStop();pushSess();}else cancelSess();return;}
+  if(S.running){stopSession();return;}
+  if(S.breathDone){pushSess();return;} /* After/Reflection: keep the finished session, ignore Back */
+  cancelSess();
+});
 function beforeStep(){
-  sessShow('<h2>Before</h2>'+sliderHTML("sBefore","How stressed do you feel right now?","1 = calm","10 = very stressed",5)+'<p class="dim">Don\'t think too long. Your first number is the honest one.</p><button class="btn" id="bNext">Next</button>');
-  bindSlider("sBefore");
+  sessShow('<h2>Before</h2>'+sliderHTML("sBefore","How stressed do you feel right now?","1 = calm","10 = very stressed",5)+'<p class="dim">Don\'t think too long. Your first number is the honest one.</p><button class="btn" id="bNext">Next</button><button class="btn sec" id="bCancel">Cancel</button>');
+  requireSliders(["sBefore"],"bNext");
+  $("bCancel").onclick=cancelSess;
   $("bNext").onclick=function(){S.before=+$("sBefore").value;startStep();};
 }
 function startStep(){
-  sessShow('<div style="padding-top:16vh;text-align:center"><p style="font-size:20px">Close your eyes if you like. The audio will guide you.</p><button class="btn" id="go" style="min-height:120px;font-size:28px;border-radius:60px;margin-top:40px">Start</button></div>');
+  sessShow('<div style="padding-top:16vh;text-align:center"><p style="font-size:20px">Close your eyes if you like. The audio will guide you.</p><button class="btn" id="go" style="min-height:120px;font-size:28px;border-radius:60px;margin-top:40px">Start</button><button class="btn sec" id="sCancel" style="margin-top:24px">Cancel</button></div>');
+  $("sCancel").onclick=cancelSess;
   $("go").onclick=function(){
     ac();
     try{if(window.speechSynthesis){var u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u);}}catch(e){}
@@ -526,8 +597,8 @@ function stopSession(){
   if(!S)return;
   clearT();try{speechSynthesis.cancel();}catch(e){}
   var n=countedCount();
-  data.sessions.push({id:uid(),date:new Date().toISOString(),type:S.type,completed:false,counted:false,programmeDay:n+1,before:S.before,after:null,holds:S.holds.slice(),mood:[],reflection:"",bodyScanDone:!!S.bodyScanDone});
-  save();S.running=false;lockOff();S=null;sessHide();render();
+  data.sessions.push({id:uid(),date:new Date().toISOString(),type:S.type,completed:false,counted:false,programmeDay:countedToday()?Math.max(1,n):n+1,before:S.before,after:null,holds:S.holds.slice(),mood:[],reflection:"",bodyScanDone:!!S.bodyScanDone});
+  save();S.running=false;lockOff();S=null;leaveSess();render();
 }
 function breathsPhase(){
   var inS=data.settings.pace==="slow"?3:2, i=0;
@@ -591,9 +662,9 @@ function pause(){
   T(step,1000);
 }
 function afterStep(){
-  S.running=false;lockOff();$("stopBtn").style.display="none";
+  S.running=false;S.breathDone=true;lockOff();$("stopBtn").style.display="none";
   sessShow('<h2>After</h2>'+sliderHTML("sAfter","How stressed do you feel right now?","1 = calm","10 = very stressed",5)+'<p class="dim">Don\'t think too long. Your first number is the honest one.</p><button class="btn" id="aNext">Next</button>');
-  bindSlider("sAfter");
+  requireSliders(["sAfter"],"aNext");
   $("aNext").onclick=function(){S.after=+$("sAfter").value;reflectStep();};
 }
 function reflectStep(){
@@ -622,7 +693,7 @@ function finishSession(){
   if(S.willCount&&S.day===3)h+='<p>Three days is a beginning, not a finish line. You\'ve just finished the first part of Week 1 — keep going.</p>';
   h+='<button class="btn" id="dDone">Done</button></div>';
   sessShow(h);
-  $("dDone").onclick=function(){S=null;sessHide();tab="practice";view=null;render();};
+  $("dDone").onclick=function(){S=null;leaveSess();tab="practice";view=null;render();};
 }
 
 /* ============ PHASE 2 ============ */
@@ -638,7 +709,7 @@ function thisWeekCount(){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDat
 function bodyScanEnabled(){var day=countedToday()?countedCount():countedCount()+1;if(day>=8&&day<=14)return true;return day>14&&!!data.settings.bodyScan;}
 function weeklyDue(){
   ensureSeen();var n=countedCount();
-  if(n>=28&&data.meta.review28Done&&data.meta.maintenanceMode==="sighing"){
+  if(n>=28&&data.meta.review28Done){ /* maintenance: weekly by calendar, whatever the mode */
     var last=data.weekly.length?data.weekly[data.weekly.length-1].date:null;
     if(!last||daysBetween(last,new Date())>=7)return {week:(data.weekly.length?Math.max.apply(null,data.weekly.map(function(w){return w.week||0;})):4)+1};
     return null;
@@ -648,9 +719,10 @@ function weeklyDue(){
   if(!data.sessions.some(function(s){return s.counted&&s.programmeDay===w*7;}))return null;
   return {week:w};
 }
-var reviewLater=false, weeklyLater=false, eveningSkipped=null;
+var reviewLater=false, weeklyLater=false, eveningSkipped=null, eveningOpen=false;
 function gate(){
   ensureSeen();var n=countedCount();
+  if(n>=14&&!data.meta.seen.scanSet){data.settings.bodyScan=true;data.meta.seen.scanSet=true;save();}
   if(!weeklyLater&&weeklyDue())return "weekly";
   if(!reviewLater&&n>=28&&!data.meta.review28Done&&data.weekly.some(function(w){return w.week===4;}))return "review";
   if(n>=14&&!data.meta.seen.w3)return "signal";
@@ -667,7 +739,7 @@ function weeklyHTML(){
     '<div class="card"><h3>What changed this week?</h3><textarea id="w_note"></textarea></div><button class="btn" id="wSave">Save</button><button class="btn sec" id="wLater">Later</button>';
 }
 function bindWeekly(){
-  ["w_sleep","w_irr","w_sw","w_st"].forEach(bindSlider);
+  requireSliders(["w_sleep","w_irr","w_sw","w_st"],"wSave");
   $("wSave").onclick=function(){var due=weeklyDue()||{week:Math.floor(countedCount()/7)};
     data.weekly.push({date:new Date().toISOString(),week:due.week,sleep:+$("w_sleep").value,irritability:+$("w_irr").value,switchOff:+$("w_sw").value,stress:+$("w_st").value,note:$("w_note").value.trim()});
     save();view=null;render();window.scrollTo(0,0);};
@@ -718,7 +790,7 @@ function bindSignal(){
 var signalFromSettings=false;
 /* midday + evening cards */
 function middayCardHTML(){
-  var done=todayHas(data.sighs,function(x){return x.scheduled;});
+  var done=todayHas(data.sighs,function(x){return x.scheduled&&!x.sub;});
   var h='<div class="card"><h3>'+(done?'✓ ':'')+'Midday sigh drill · 2 min</h3><p>Practise it when you\'re calm, so it\'s there when you\'re not.</p>';
   if(!data.settings.middayTime)h+='<p class="dim">Pick a time for your midday drill.</p><input type="time" id="midTime" value="12:30">';
   h+='<button class="btn" id="goDrill">'+(done?'Do it again':'Start')+'</button></div>';
@@ -728,6 +800,7 @@ function eveningCardHTML(){
   if(todayHas(data.evenings)||eveningSkipped===dayKey())return "";
   var now=new Date(),hm=pad(now.getHours())+":"+pad(now.getMinutes());
   var at=data.settings.eveningTime||"18:00";if(hm<at)return "";
+  if(!eveningOpen)return '<div class="card" id="evCard"><div class="hdr"><h3 style="margin:0">Evening check-in · 1 min</h3><button class="btn sec" style="width:auto;margin:0" id="evOpen">Open</button></div></div>';
   var sig=(data.meta.signal&&data.meta.signal.length)?data.meta.signal.join(", "):"your signal";
   function grp(id,opts){return '<div class="chips" data-g="'+id+'">'+opts.map(function(o){return '<button class="chip ev" data-v="'+esc(o)+'">'+esc(o)+'</button>';}).join("")+'</div>';}
   return '<div class="card" id="evCard"><h3>Evening check-in</h3><p>What was the most stressful moment today?</p><input type="text" id="evMoment" placeholder="Optional">'+
@@ -739,33 +812,34 @@ function eveningCardHTML(){
 function bindPhase2Home(){
   ensureSeen();
   var mo=$("maintOk");if(mo)mo.onclick=function(){data.meta.seen.maint=true;save();render();};
-  var ms_=$("mTimeSave");if(ms_)ms_.onclick=function(){data.settings.morningTime=$("mTime").value||null;data.meta.seen.w2=true;data.settings.bodyScan=true;save();askNotify();render();};
+  var ms_=$("mTimeSave");if(ms_)ms_.onclick=function(){data.settings.morningTime=$("mTime").value||null;data.meta.seen.w2=true;save();render();};
   var gs=$("goSigh");if(gs)gs.onclick=function(){startSigh(false,null);};
-  var gd=$("goDrill");if(gd)gd.onclick=function(){var mt=$("midTime");if(mt&&mt.value){data.settings.middayTime=mt.value;save();askNotify();}startSigh(true,2);};
+  var gd=$("goDrill");if(gd)gd.onclick=function(){var mt=$("midTime");if(mt&&mt.value){data.settings.middayTime=mt.value;save();}startSigh(true,2);};
   document.querySelectorAll("#evCard .chips").forEach(function(g){g.querySelectorAll(".ev").forEach(function(b){b.onclick=function(){var was=b.classList.contains("on");g.querySelectorAll(".ev").forEach(function(x){x.classList.remove("on");});if(!was)b.classList.add("on");};});});
-  var es=$("evSave");if(es)es.onclick=function(){
+  var eo=$("evOpen");if(eo)eo.onclick=function(){eveningOpen=true;render();};
+  var es=$("evSave");if(es)es.onclick=function(){eveningOpen=false;
     function v(id){var b=document.querySelector('#evCard [data-g="'+id+'"] .on');return b?b.dataset.v:null;}
     data.evenings.push({date:new Date().toISOString(),moment:$("evMoment").value.trim(),usedBreath:v("usedBreath"),noticedWhen:v("noticedWhen"),signalNoticed:v("signalNoticed")});save();render();};
-  var ek=$("evSkip");if(ek)ek.onclick=function(){eveningSkipped=dayKey();render();};
+  var ek=$("evSkip");if(ek)ek.onclick=function(){eveningSkipped=dayKey();eveningOpen=false;render();};
 }
 /* sigh tool */
-function startSigh(scheduled,mins){
-  ac();S={sigh:true,scheduled:scheduled,minutes:mins||2,before:5,after:null,trigger:"",running:false};
-  var h='<h2>Sigh — calm in a minute</h2><p class="dim">Safe to use anywhere — sitting, standing, at your desk. Use this during the day, not the 30-breath method.</p>';
+function startSigh(scheduled,mins,sub){
+  ac();S={sigh:true,scheduled:scheduled||!!sub,sub:!!sub,minutes:mins||2,before:null,after:null,trigger:"",running:false};
+  var h='<h2>'+(sub?'Sigh session':'Sigh — calm in a minute')+'</h2>'+(sub?'<p>For days you can\'t lie down — travel, a crowded morning. It keeps the habit going but doesn\'t count as a programme day.</p>':'')+'<p class="dim">Safe to use anywhere — sitting, standing, at your desk. Use this during the day, not the 30-breath method.</p>';
   h+='<h3>Minutes</h3><div class="chips">'+[1,2,3,5].map(function(m){return '<button class="chip dur'+(m===S.minutes?' on':'')+'" data-m="'+m+'">'+m+' min</button>';}).join("")+'</div>';
   h+=sliderHTML("sgBefore","Before","1 = calm","10 = very stressed",5);
-  if(!scheduled)h+='<h3>What set it off?</h3><div class="chips">'+SIGH_TAGS.map(function(t){return '<button class="chip trg" data-t="'+t+'">'+t+'</button>';}).join("")+'</div>';
+  if(!scheduled&&!sub)h+='<h3>What set it off?</h3><div class="chips">'+SIGH_TAGS.map(function(t){return '<button class="chip trg" data-t="'+t+'">'+t+'</button>';}).join("")+'</div>';
   h+='<button class="btn" id="sgGo">Start</button><button class="btn sec" id="sgCancel">Cancel</button>';
-  sessShow(h);bindSlider("sgBefore");
+  sessShow(h);requireSliders(["sgBefore"],"sgGo");pushSess();
   document.querySelectorAll(".dur").forEach(function(b){b.onclick=function(){document.querySelectorAll(".dur").forEach(function(x){x.classList.remove("on");});b.classList.add("on");S.minutes=+b.dataset.m;};});
   document.querySelectorAll(".trg").forEach(function(b){b.onclick=function(){var was=b.classList.contains("on");document.querySelectorAll(".trg").forEach(function(x){x.classList.remove("on");});if(!was)b.classList.add("on");};});
-  $("sgCancel").onclick=function(){S=null;sessHide();};
+  $("sgCancel").onclick=cancelSess;
   $("sgGo").onclick=function(){var t=document.querySelector(".trg.on");S.trigger=t?t.dataset.t:"";S.before=+$("sgBefore").value;runSigh();};
 }
 function runSigh(){
   S.running=true;lockOn();$("stopBtn").style.display="block";
   sessShow('<p class="cue" style="margin-top:40px">Safe to use anywhere — sitting, standing, at your desk. Use this during the day, not the 30-breath method.</p><div class="circleWrap"><div class="circle" id="circ"></div></div><p class="cue" id="sgCue"></p><div class="big" id="sgLeft" style="font-size:28px"></div>',true);
-  var c=$("circ"),end=performance.now()+S.minutes*60000/speed(),first=true;
+  var c=$("circ"),end=performance.now()+S.minutes*60000/speed(),first=true;S.t0=performance.now();
   function left(){var r=Math.max(0,(end-performance.now())*speed()/1000);$("sgLeft").textContent=fmtSec(Math.ceil(r));}
   function cycle(){
     if(!S||!S.running)return;
@@ -781,12 +855,12 @@ function runSigh(){
 }
 function sighStop(){clearT();try{speechSynthesis.cancel();}catch(e){}sighAfter();}
 function sighAfter(){
-  if(!S)return;clearT();S.running=false;lockOff();$("stopBtn").style.display="none";
+  if(!S)return;clearT();if(S.running)S.done=Math.max(0.1,Math.round((performance.now()-S.t0)*speed()/6000)/10);S.running=false;lockOff();$("stopBtn").style.display="none";
   sessShow('<h2>After</h2>'+sliderHTML("sgAfter","After","1 = calm","10 = very stressed",5)+'<button class="btn" id="sgSave">Save</button>');
-  bindSlider("sgAfter");
+  requireSliders(["sgAfter"],"sgSave");
   $("sgSave").onclick=function(){
-    data.sighs.push({id:uid(),date:new Date().toISOString(),minutes:S.minutes,before:S.before,after:+$("sgAfter").value,trigger:S.scheduled?"":S.trigger,scheduled:!!S.scheduled});
-    save();S=null;sessHide();view=null;tab="practice";render();};
+    data.sighs.push({id:uid(),date:new Date().toISOString(),minutes:S.done!=null?Math.min(S.done,S.minutes):S.minutes,plannedMinutes:S.minutes,before:S.before,after:+$("sgAfter").value,trigger:S.scheduled?"":S.trigger,scheduled:!!S.scheduled,sub:!!S.sub});
+    save();S=null;leaveSess();view=null;tab="practice";render();};
 }
 /* body scan */
 function bodyScan(){
@@ -795,22 +869,15 @@ function bodyScan(){
   function step(){if(!S||!S.running)return;left--;if($("bs"))$("bs").textContent=left;if(left>0)T(step,1000);else afterStep();}
   T(step,1000);
 }
-/* reminders */
-var notifPerm=function(){try{return ("Notification" in window)?Notification.permission:"unsupported";}catch(e){return "unsupported";}};
-function askNotify(){try{if("Notification" in window&&Notification.permission==="default")Notification.requestPermission().then(function(){if(view==="settings")render();});}catch(e){}}
+/* reminders: shown in the app as banners. Real alerts need a phone alarm — a web page can't reliably notify when it's closed. */
 function dueReminders(){
   var now=new Date(),hm=pad(now.getHours())+":"+pad(now.getMinutes()),n=countedCount(),out=[],st=data.settings;
-  if(st.morningTime&&hm>=st.morningTime&&!todayHas(data.sessions,function(s){return s.completed;})&&!(n>=28&&data.meta.maintenanceMode==="sighing"))out.push(["morning","Time for your morning breathing practice."]);
-  if(n>=14&&st.middayTime&&hm>=st.middayTime&&!todayHas(data.sighs,function(x){return x.scheduled;}))out.push(["midday","Time for your midday sigh drill."]);
+  if(st.morningTime&&hm>=st.morningTime&&!todayHas(data.sessions,function(s){return s.completed;})&&!subSighToday()&&!(n>=28&&data.meta.maintenanceMode==="sighing"))out.push(["morning","Time for your morning breathing practice."]);
+  if(n>=14&&st.middayTime&&hm>=st.middayTime&&!todayHas(data.sighs,function(x){return x.scheduled&&!x.sub;}))out.push(["midday","Time for your midday sigh drill."]);
   if(n>=21&&st.eveningTime&&hm>=st.eveningTime&&!todayHas(data.evenings))out.push(["evening","Time for your evening check-in."]);
   return out;
 }
-function reminderBanners(){if(notifPerm()==="granted")return "";return dueReminders().map(function(r){return '<div class="card banner">'+esc(r[1])+'</div>';}).join("");}
-var fired={};
-function checkReminders(){
-  if(notifPerm()!=="granted")return;
-  dueReminders().forEach(function(r){var k=dayKey()+r[0];if(fired[k]||lsGet("breathe_fired_"+k))return;fired[k]=1;lsSet("breathe_fired_"+k,"1");try{new Notification("Breathe",{body:r[1]});}catch(e){}});
-}
+function reminderBanners(){return dueReminders().map(function(r){return '<div class="card banner">'+esc(r[1])+'</div>';}).join("");}
 /* settings additions */
 function settings2HTML(){
   var s=data.settings,n=countedCount(),h='';
@@ -821,9 +888,7 @@ function settings2HTML(){
   h+='<p>Morning</p><input type="time" id="tM" value="'+esc(s.morningTime||"")+'">';
   h+='<p>Midday</p><input type="time" id="tD" value="'+esc(s.middayTime||"")+'">';
   h+='<p>Evening</p><input type="time" id="tE" value="'+esc(s.eveningTime||"")+'">';
-  var p=notifPerm();
-  if(p==="default")h+='<button class="btn sec" id="notifOn">Allow notifications</button>';
-  if(p!=="granted")h+='<p class="dim">Browser reminders are unreliable on phones. Set a phone alarm as backup.</p>';
+  h+='<p class="dim">These times show as reminders inside the app. For an alert when the app is closed, set a phone alarm for the same times.</p>';
   if(data.meta.review28Done)h+='</div><div class="card"><h3>How to continue</h3>'+modeButtons();
   return h;
 }
@@ -832,8 +897,7 @@ function bindSettings2(){
   var e=$("sExtra");if(e)e.onclick=function(){s.extraRound=!s.extraRound;save();render();};
   var b=$("sScan");if(b)b.onclick=function(){s.bodyScan=!s.bodyScan;save();render();};
   var g=$("sigEdit");if(g)g.onclick=function(){signalFromSettings=true;view="signal";render();window.scrollTo(0,0);};
-  [["tM","morningTime"],["tD","middayTime"],["tE","eveningTime"]].forEach(function(x){$(x[0]).onchange=function(){s[x[1]]=$(x[0]).value||null;save();askNotify();};});
-  var nb=$("notifOn");if(nb)nb.onclick=askNotify;
+  [["tM","morningTime"],["tD","middayTime"],["tE","eveningTime"]].forEach(function(x){$(x[0]).onchange=function(){s[x[1]]=$(x[0]).value||null;save();};});
   bindModes(function(){render();});
 }
 
@@ -866,7 +930,11 @@ function axes(g,labels,yMax,yLabel,xLabel,ySteps){
 }
 function progressHTML(){
   var h='<h2>Progress</h2>',cw=curWeek(),n=countedCount();
-  h+=data.weekly.length?chartBox("ch1","Your four numbers","This is the real test — whether your everyday baseline is changing, not just how you feel after a session.",[["Sleep",COLORS.sleep],["Irritability",COLORS.irritability],["Switch off",COLORS.switchOff],["Stress",COLORS.stress]]):'<div class="card"><h3>Your four numbers</h3>'+emptyMsg(1)+'</div>';
+  if(data.weekly.length){
+    h+='<h3>Your four numbers</h3><p class="dim cap">This is the real test — whether your everyday baseline is changing, not just how you feel after a session. Dashed lines are Day 0.</p>';
+    h+=chartBox("ch1a","Sleep and switching off · higher is better","",[["Sleep",COLORS.sleep],["Switch off",COLORS.switchOff]]);
+    h+=chartBox("ch1b","Stress and irritability · lower is better","",[["Stress",COLORS.stress],["Irritability",COLORS.irritability]]);
+  } else h+='<div class="card"><h3>Your four numbers</h3><p class="dim">Not enough data yet — this fills in after your first 7 sessions.</p></div>';
   var hasBA=data.sessions.some(function(s){return s.completed&&s.before!=null&&s.after!=null;});
   h+=hasBA?chartBox("ch2","Morning sessions","The gap shows the session's immediate effect. A falling 'before' bar over the weeks is the bigger sign.",[["Before",COLORS.before],["After",COLORS.after]]):'<div class="card"><h3>Morning sessions</h3>'+emptyMsg(1)+'</div>';
   h+=n?chartBox("ch3","Consistency","Showing up matters more than the length of the session.",[["Full",COLORS.full],["Short",COLORS.short],["Midday drill",COLORS.drill],["On-demand sigh",COLORS.od]]):'<div class="card"><h3>Consistency</h3>'+emptyMsg(1)+'</div>';
@@ -875,7 +943,11 @@ function progressHTML(){
     var ba=od.filter(function(s){return s.before!=null&&s.after!=null;}),avg=function(k){return ba.length?(ba.reduce(function(a,s){return a+(+s[k]);},0)/ba.length).toFixed(1):"–";};
     h+='<div class="card chart"><h3>Sighing</h3><p class="dim cap">On-demand uses per week</p><canvas id="ch4" class="cv" style="width:100%;height:200px;display:block"></canvas><p class="dim cap">Average before → after</p><p>'+avg("before")+' → '+avg("after")+'</p><p class="dim cap">Triggers</p><canvas id="ch4b" class="cv" style="width:100%;height:'+(30+28*SIGH_TAGS.length)+'px;display:block"></canvas></div>';
   } else h+='<div class="card"><h3>Sighing</h3>'+emptyMsg(3)+'</div>';
-  h+=data.evenings.length?chartBox("ch5","Noticing","The goal is moving from 'too late' to 'early'.",[["Early",COLORS.early],["Midway",COLORS.midway],["Too late",COLORS.late],["Signal noticed",COLORS.sig,1]]):'<div class="card"><h3>Noticing</h3>'+emptyMsg(4)+'</div>';
+  var evW={};data.evenings.forEach(function(e){evW[weekAt(e.date)]=1;});
+  if(data.evenings.length&&Object.keys(evW).length<2){
+    var E=data.evenings,pc=function(f){return Math.round(100*E.filter(f).length/E.length)+"%";};
+    h+='<div class="card"><h3>Noticing</h3><div class="split"><div><b>'+pc(function(e){return e.noticedWhen==="Early";})+'</b>Early</div><div><b>'+pc(function(e){return e.noticedWhen==="Midway";})+'</b>Midway</div><div><b>'+pc(function(e){return e.noticedWhen==="Too late";})+'</b>Too late</div><div><b>'+pc(function(e){return e.signalNoticed==="Yes";})+'</b>Signal noticed</div></div><p class="dim cap">From '+E.length+' evening check-in'+(E.length>1?'s':'')+'. The trend chart appears once there are two weeks to compare. The goal is moving from \'too late\' to \'early\'.</p></div>';
+  } else h+=data.evenings.length?chartBox("ch5","Noticing","The goal is moving from 'too late' to 'early'.",[["Early",COLORS.early],["Midway",COLORS.midway],["Too late",COLORS.late],["Signal noticed",COLORS.sig,1]]):'<div class="card"><h3>Noticing</h3>'+emptyMsg(4)+'</div>';
   if(data.settings.showHolds){
     var hs=data.sessions.filter(function(s){return s.holds&&s.holds.length;});
     h+=hs.length?chartBox("ch6","Hold times","For interest only — not a goal."):'<div class="card"><h3>Hold times</h3>'+emptyMsg(1)+'<p class="dim">For interest only — not a goal.</p></div>';
@@ -887,16 +959,17 @@ function weeksRange(){var m=Math.max(1,curWeek());data.weekly.forEach(function(w
 function drawCharts(){
   try{
   var g,a,W;
-  if((g=setupCanvas("ch1"))){
+  [["ch1a",["sleep","switchOff"]],["ch1b",["stress","irritability"]]].forEach(function(cfg){
+   if(!(g=setupCanvas(cfg[0])))return;
     var ws=data.weekly.slice().sort(function(p,q){return p.week-q.week;}),labs=ws.map(function(w){return "W"+w.week;});
     a=axes(g,labs,10,"score","week",5);var b=data.baseline||{};
-    ["sleep","irritability","switchOff","stress"].forEach(function(k){
+    cfg[1].forEach(function(k){
       g.x.strokeStyle=COLORS[k];
       if(b[k]!=null){g.x.setLineDash([5,4]);g.x.lineWidth=1.5;var y=g.T+a.ph-a.ph*b[k]/10;g.x.beginPath();g.x.moveTo(g.L,y);g.x.lineTo(g.L+a.pw,y);g.x.stroke();g.x.setLineDash([]);}
       g.x.lineWidth=2.5;g.x.beginPath();ws.forEach(function(w,i){var px=g.L+a.pw*(i+0.5)/ws.length,py=g.T+a.ph-a.ph*(w[k]||0)/10;if(i)g.x.lineTo(px,py);else g.x.moveTo(px,py);});g.x.stroke();
       g.x.fillStyle=COLORS[k];ws.forEach(function(w,i){var px=g.L+a.pw*(i+0.5)/ws.length,py=g.T+a.ph-a.ph*(w[k]||0)/10;g.x.beginPath();g.x.arc(px,py,3,0,7);g.x.fill();});
     });
-  }
+  });
   if((g=setupCanvas("ch2"))){
     W=weeksRange();var bw=W.map(function(w){var ss=data.sessions.filter(function(s){return s.completed&&s.before!=null&&s.after!=null&&weekOf(Math.max(1,s.programmeDay||1))===w;});
       return ss.length?[ss.reduce(function(t,s){return t+s.before;},0)/ss.length,ss.reduce(function(t,s){return t+s.after;},0)/ss.length]:null;});
@@ -1002,10 +1075,13 @@ window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();def
 window.addEventListener("appinstalled",function(){deferredPrompt=null;lsSet(INSTALL_KEY,"1");var c=$("installCard");if(c)c.remove();});
 if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
 
+/* chips: keep aria-pressed in step with the visual state */
+document.addEventListener("click",function(e){var t=e.target;if(t&&t.classList&&t.classList.contains("chip"))setTimeout(function(){document.querySelectorAll("button.chip").forEach(function(b){b.setAttribute("aria-pressed",b.classList.contains("on")?"true":"false");});},0);});
+
 /* ============ INIT ============ */
 if(firstLaunch){view="onboard";obStep=1;}
 render();
-setInterval(checkReminders,30000);checkReminders();
+setInterval(function(){if(tab==="practice"&&!view&&!S)render();},60000); /* refresh due banners */
 </script>
 </body>
 </html>
