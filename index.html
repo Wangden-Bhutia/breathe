@@ -102,6 +102,11 @@ body.test #stopBtn{top:44px}
 .modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px}
 .modal.show{display:flex}
 .modal .card{max-width:480px;width:100%;background:var(--bg2)}
+.paceRow{display:flex;gap:10px;justify-content:center;margin-top:18px}
+.paceRow button{min-height:56px;min-width:110px;border-radius:28px;border:1px solid #1d4a46;background:transparent;color:#6f8f8a;font-size:17px;cursor:pointer}
+.paceVal{text-align:center;color:#4c6a66;font-size:15px;margin-top:8px}
+.prevWrap{display:flex;justify-content:center;align-items:center;height:150px}
+.prevWrap .circle{width:56px;height:56px;font-size:20px}
 input[type=range].unset::-webkit-slider-thumb{opacity:0}
 input[type=range].unset::-moz-range-thumb{opacity:0}
 .sval.unset{color:var(--dim);font-size:20px;font-weight:400;padding:10px 0}
@@ -145,7 +150,7 @@ function key(){return testMode?TEST_KEY:REAL_KEY;}
 function defaultData(){
   return {
     version:1,
-    settings:{pace:"normal",breathTones:true,phaseChimes:true,voiceCues:true,showHolds:false,extraRound:false,bodyScan:false,morningTime:null,middayTime:null,eveningTime:null},
+    settings:{pace:"normal",breathSec:null,breathTones:true,phaseChimes:true,voiceCues:true,showHolds:false,extraRound:false,bodyScan:false,morningTime:null,middayTime:null,eveningTime:null},
     meta:{startedAt:null,lastFullSafety:null,signal:[],review28Done:false,maintenanceMode:null},
     baseline:{date:null,sleep:null,irritability:null,switchOff:null,stress:null},
     sessions:[],sighs:[],weekly:[],evenings:[],notes:""
@@ -186,6 +191,13 @@ function lastSessionDate(){var l=null;data.sessions.forEach(function(s){if(!l||n
 function daysBetween(a,b){var A=new Date(dayKey(a)),B=new Date(dayKey(b));return Math.round((B-A)/86400000);}
 function speed(){return (testMode&&fastTimings)?10:1;}
 function ms(x){return x/speed();}
+
+/* ============ BREATH SPEED ============ */
+/* Seconds for each inhale and each exhale in the 30 breaths. The circle and the breath tones both use this value, so they stay in sync. */
+var PACE_MIN=1.5, PACE_MAX=4, PACE_STEP=0.25;
+function breathIn(){var v=+data.settings.breathSec;if(!v||isNaN(v))v=data.settings.pace==="slow"?3:2;return Math.min(PACE_MAX,Math.max(PACE_MIN,v));}
+function setBreathIn(v){v=Math.round(Math.min(PACE_MAX,Math.max(PACE_MIN,v))/PACE_STEP)*PACE_STEP;data.settings.breathSec=v;data.settings.pace=v>=3?"slow":"normal";save();return v;}
+function paceText(v){var bpm=60/(2*v),t=Math.round(60*v);return v.toFixed(2).replace(/0$/,"")+" s in · "+v.toFixed(2).replace(/0$/,"")+" s out · "+(Math.round(bpm*10)/10)+" breaths a minute · 30 breaths take "+Math.floor(t/60)+":"+pad(t%60);}
 
 /* ============ AUDIO ============ */
 var actx=null;
@@ -361,7 +373,7 @@ function practiceHTML(){
 }
 /* Session length from the current settings: 30 breaths + a 1–2 min hold + 15 s recovery + 10 s pause per round, plus check-ins. */
 function estimate(type){
-  var inS=data.settings.pace==="slow"?3:2, rounds=type==="short"?2:(data.settings.extraRound?4:3);
+  var inS=breathIn(), rounds=type==="short"?2:(data.settings.extraRound?4:3);
   var scan=type==="full"&&bodyScanEnabled()?60:0, extra=90+scan, br=30*2*inS;
   var lo=Math.round((rounds*(br+60+25)-10+extra)/60), hi=Math.round((rounds*(br+120+25)-10+extra)/60);
   return lo+"–"+hi+" min";
@@ -418,7 +430,15 @@ function swHTML(id,on){return '<button class="sw'+(on?' on':'')+'" id="'+id+'" r
 function settingsHTML(){
   var s=data.settings,h='<div class="hdr"><h1>Settings</h1><button class="btn sec" style="width:auto" id="back">Done</button></div>';
   h+='<div class="card">';
-  h+='<div class="toggle"><span>Breathing pace</span><div class="seg"><button id="pN" class="'+(s.pace!=="slow"?"on":"")+'">normal</button><button id="pS" class="'+(s.pace==="slow"?"on":"")+'">slow</button></div></div>';
+  var bi=breathIn();
+  h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="hdr"><span>Breathing speed</span><span class="dim" id="paceLbl" style="font-size:15px">'+(bi<=1.75?'fast':bi>=3?'slow':'normal')+'</span></div>'+
+     '<input type="range" id="paceIn" min="'+PACE_MIN+'" max="'+PACE_MAX+'" step="'+PACE_STEP+'" value="'+bi+'" aria-label="Seconds per inhale and exhale">'+
+     '<div class="slab"><span>faster</span><span>slower</span></div>'+
+     '<p class="dim" id="paceTxt" style="font-size:15px">'+esc(paceText(bi))+'</p>'+
+     '<div class="seg" style="width:max-content"><button class="pp'+(bi===1.5?' on':'')+'" data-v="1.5">Fast</button><button class="pp'+(bi===2?' on':'')+'" data-v="2">Normal</button><button class="pp'+(bi===3?' on':'')+'" data-v="3">Slow</button></div>'+
+     '<div class="prevWrap"><div class="circle" id="prevCirc"></div></div>'+
+     '<button class="btn sec" id="paceTry">Preview 3 breaths</button>'+
+     '<p class="dim" style="font-size:15px">A comfortable pace lets you fill the belly, then the chest, and let go without pushing. You can also change it during a session.</p></div>';
   h+='<div class="toggle"><span>Breath tones</span>'+swHTML("sTones",s.breathTones)+'</div>';
   h+='<div class="toggle"><span>Phase chimes<br><span class="dim" style="font-size:15px">A distinct sound at each change, so you can keep your eyes closed.</span></span>'+swHTML("sChime",s.phaseChimes!==false)+'</div>';
   h+='<div class="toggle"><span>Voice cues</span>'+swHTML("sVoice",s.voiceCues)+'</div>';
@@ -437,8 +457,11 @@ function settingsHTML(){
 function bindSettings(){
   var s=data.settings;
   $("back").onclick=function(){view=null;tab="practice";render();};
-  $("pN").onclick=function(){s.pace="normal";save();render();};
-  $("pS").onclick=function(){s.pace="slow";save();render();};
+  function paceUI(v){$("paceIn").value=v;$("paceTxt").textContent=paceText(v);$("paceLbl").textContent=v<=1.75?'fast':v>=3?'slow':'normal';
+    document.querySelectorAll(".pp").forEach(function(b){b.classList.toggle("on",+b.dataset.v===v);});}
+  $("paceIn").oninput=function(){paceUI(setBreathIn(+$("paceIn").value));};
+  document.querySelectorAll(".pp").forEach(function(b){b.onclick=function(){paceUI(setBreathIn(+b.dataset.v));};});
+  $("paceTry").onclick=previewPace;
   $("sTones").onclick=function(){s.breathTones=!s.breathTones;save();render();};
   $("sVoice").onclick=function(){s.voiceCues=!s.voiceCues;save();render();};
   $("sChime").onclick=function(){s.phaseChimes=(s.phaseChimes===false);save();render();};
@@ -458,6 +481,18 @@ function bindSettings(){
     $("fill").onclick=function(){if(confirm("Replace test data with 28 days of sample data?")){fillSample();alert("Sample data created.");render();}};
     $("sFast").onclick=function(){fastTimings=!fastTimings;lsSet(FAST_KEY,fastTimings?"1":"0");render();};
   }
+}
+var prevTimers=[];
+function previewPace(){
+  prevTimers.forEach(clearTimeout);prevTimers=[];ac();
+  var c=$("prevCirc"),n=0;if(!c)return;
+  function P(fn,d){prevTimers.push(setTimeout(fn,d));}
+  function one(){
+    if(!$("prevCirc"))return;var v=breathIn();n++;c.textContent=n;
+    c.style.transitionDuration=v+"s";c.style.transform="scale(2.3)";tone(220,330,v*0.95,0.06);
+    P(function(){c.style.transform="scale(1)";tone(330,200,v*0.95,0.05);P(function(){if(n<3)one();else c.textContent="";},v*1000);},v*1000);
+  }
+  one();
 }
 function exportData(){
   try{
@@ -611,13 +646,17 @@ function stopSession(){
   save();S.running=false;lockOff();S=null;leaveSess();render();
 }
 function breathsPhase(){
-  var inS=data.settings.pace==="slow"?3:2, i=0;
-  sessShow('<p class="cue" style="margin-top:40px">Round '+S.round+' of '+S.rounds+'</p><div class="circleWrap"><div class="circle" id="circ">0</div></div><p class="cue">Full breath into belly, then chest. Let it go. Don\'t push the exhale.</p>',true);
+  var i=0;
+  sessShow('<p class="cue" style="margin-top:40px">Round '+S.round+' of '+S.rounds+'</p><div class="circleWrap"><div class="circle" id="circ">0</div></div><p class="cue">Full breath into belly, then chest. Let it go. Don\'t push the exhale.</p>'+
+    '<div class="paceRow"><button id="slower" aria-label="Slower">− Slower</button><button id="faster" aria-label="Faster">Faster +</button></div><div class="paceVal" id="paceNow">'+breathIn()+' s in / out</div>',true);
   var c=$("circ");
+  function bump(d){var v=setBreathIn(breathIn()+d);$("paceNow").textContent=v+" s in / out"+(v===PACE_MIN?" (fastest)":v===PACE_MAX?" (slowest)":"");tone(d>0?440:660,d>0?440:660,0.15,0.05);}
+  $("slower").onclick=function(e){e.stopPropagation();bump(PACE_STEP);};
+  $("faster").onclick=function(e){e.stopPropagation();bump(-PACE_STEP);};
   function breath(){
     if(!S||!S.running)return;
     i++;c.textContent=i;
-    var dur=inS/speed();
+    var inS=breathIn(), dur=inS/speed();
     c.style.transitionDuration=dur+"s";c.style.transform="scale(2.3)";breathTone(true,dur);
     if(i===28)say("Two more.");
     if(i===30)say("Last breath. Let go.");
