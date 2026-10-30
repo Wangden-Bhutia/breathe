@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b2a2c">
 <title>Breathe</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Breathe">
 <style>
 :root{--bg:#0b2a2c;--bg2:#113a3d;--card:#16474a;--line:#22605f;--txt:#e6f4f1;--dim:#9cc5bf;--acc:#5fd3bf;--acc2:#2fa894;--red:#c0392b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -66,6 +74,11 @@ input[type=time]{width:100%;background:var(--bg2);color:var(--txt);border:1px so
 .banner{background:#24504a;border-left:4px solid var(--acc)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:15px;color:var(--dim)}.legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
 .cap{font-size:15px;margin:6px 0 0}
+.install{display:flex;align-items:center;gap:10px;padding:10px 8px 10px 12px;border-radius:22px;background:linear-gradient(135deg,#1a5a57,#0f3b3c);border:1px solid rgba(95,211,191,.35);box-shadow:0 0 24px rgba(95,211,191,.18);margin:12px 0}
+.install img{width:44px;height:44px;border-radius:12px;flex:none;box-shadow:0 0 14px rgba(95,211,191,.35)}
+.install .it{flex:1;min-width:0}.install .it{line-height:1.3}.install .it strong{display:block;font-size:17px;white-space:nowrap}.install .it span{display:block;font-size:14px;color:var(--dim)}
+.install .ib{min-height:44px;padding:0 18px;border-radius:22px;border:0;background:var(--acc);color:#05231f;font-weight:700;font-size:16px;cursor:pointer;flex:none}
+.install .ix{background:none;border:0;color:var(--dim);font-size:22px;width:32px;height:44px;cursor:pointer;flex:none}
 .tag.ex{background:#233f6b;color:#bcd4ff}
 /* session overlay */
 #sess{position:fixed;inset:0;z-index:60;background:var(--bg);display:none;overflow:auto}
@@ -268,6 +281,7 @@ function bindOnboard(){
 function practiceHTML(){
   var n=countedCount(), h='';
   h+='<div class="hdr"><h1>Breathe</h1><button class="gear" id="gear" aria-label="Settings">⚙</button></div>';
+  h+=installCardHTML();
   h+=reminderBanners();
   var th=themeFor(n);h+='<div class="card theme"><div class="dim">'+esc(th[0])+'</div><div>'+esc(th[1])+'</div></div>';
   if(n>=28&&data.meta.review28Done&&!data.meta.seen.maint)h+='<div class="card"><p>Four weeks done. From here, the practice is yours.</p><button class="btn sec" id="maintOk">OK</button></div>';
@@ -306,6 +320,7 @@ function bindPractice(){
   $("goFull").onclick=function(){startFlow("full");};
   $("goShort").onclick=function(){startFlow("short");};
   bindPhase2Home();
+  bindInstall();
 }
 
 /* ============ LEARN ============ */
@@ -968,6 +983,24 @@ function bindReport(){
   $("rpCopy").onclick=function(){copyText(reportText(),function(ok){$("rpMsg").textContent=ok?"Copied.":"Couldn't copy. Select and copy the text below.";if(!ok){var ta=document.createElement("textarea");ta.value=reportText();ta.style.minHeight="260px";$("rpMsg").after(ta);}});};
 }
 var _rsz;window.addEventListener("resize",function(){clearTimeout(_rsz);_rsz=setTimeout(function(){if(tab==="log"&&!view)drawCharts();},200);});
+
+/* ============ INSTALL (PWA) ============ */
+var INSTALL_KEY="breathe_install_dismissed", deferredPrompt=null;
+function isStandalone(){try{return (window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;}catch(e){return false;}}
+function isIOS(){var u=navigator.userAgent||"";return /iphone|ipad|ipod/i.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1);}
+function installCardHTML(){
+  if(isStandalone()||lsGet(INSTALL_KEY)==="1")return "";
+  var ios=isIOS()&&!deferredPrompt;if(!deferredPrompt&&!ios)return "";
+  return '<div class="install" id="installCard"><img src="icons/icon-192.png" alt=""><div class="it"><strong>Install Breathe</strong><span>'+(ios?'Tap Share, then Add to Home Screen':'Add it to your home screen')+'</span></div>'+
+    (ios?'':'<button class="ib" id="installGo">Install</button>')+'<button class="ix" id="installX" aria-label="Dismiss">×</button></div>';
+}
+function bindInstall(){
+  var g=$("installGo");if(g)g.onclick=function(){if(!deferredPrompt)return;var p=deferredPrompt;deferredPrompt=null;try{p.prompt();(p.userChoice||Promise.resolve()).then(function(){render();});}catch(e){render();}};
+  var x=$("installX");if(x)x.onclick=function(){lsSet(INSTALL_KEY,"1");var c=$("installCard");if(c)c.remove();};
+}
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;if(tab==="practice"&&!view&&!(S&&S.running))render();});
+window.addEventListener("appinstalled",function(){deferredPrompt=null;lsSet(INSTALL_KEY,"1");var c=$("installCard");if(c)c.remove();});
+if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
 
 /* ============ INIT ============ */
 if(firstLaunch){view="onboard";obStep=1;}
