@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b2a2c">
+<title>Breathe</title>
+<style>
+:root{--bg:#0b2a2c;--bg2:#113a3d;--card:#16474a;--line:#22605f;--txt:#e6f4f1;--dim:#9cc5bf;--acc:#5fd3bf;--acc2:#2fa894;--red:#c0392b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:1.5}
+#testbar{display:none;position:sticky;top:0;z-index:50;background:var(--red);color:#fff;text-align:center;font-weight:700;padding:6px;letter-spacing:2px}
+body.test #testbar{display:block}
+main{max-width:560px;margin:0 auto;padding:16px 16px 100px}
+h1{font-size:28px;margin:8px 0 4px;font-weight:600}
+h2{font-size:22px;margin:16px 0 8px;font-weight:600}
+h3{font-size:18px;margin:12px 0 6px}
+p{margin:8px 0}
+.dim{color:var(--dim)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+.btn{display:block;width:100%;min-height:54px;border:0;border-radius:14px;background:var(--acc);color:#05231f;font-size:18px;font-weight:600;padding:12px 16px;margin:10px 0;cursor:pointer}
+.btn.sec{background:transparent;color:var(--txt);border:1px solid var(--line)}
+.btn.danger{background:var(--red);color:#fff}
+.btn:disabled{opacity:.4}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.badge{background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:15px;color:var(--dim)}
+.daycard{display:flex;align-items:center;gap:12px;opacity:.5}
+.daycard.active{opacity:1;border-color:var(--acc)}
+.daycard.done{opacity:.9}
+.daycard .num{width:44px;height:44px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.daycard.done .num{background:var(--acc2);color:#fff}
+.hdr{display:flex;justify-content:space-between;align-items:center}
+.gear{background:none;border:0;color:var(--txt);font-size:28px;width:52px;height:52px;cursor:pointer}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--bg2);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:40}
+nav button{flex:1;min-height:60px;background:none;border:0;color:var(--dim);font-size:17px;cursor:pointer}
+nav button.on{color:var(--acc);font-weight:700}
+body.noNav nav{display:none}
+input[type=range]{width:100%;height:44px;accent-color:var(--acc)}
+.slab{display:flex;justify-content:space-between;font-size:15px;color:var(--dim)}
+.sval{font-size:32px;font-weight:700;text-align:center;color:var(--acc)}
+textarea,input[type=text],input[type=number]{width:100%;background:var(--bg2);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:17px;font-family:inherit}
+textarea{min-height:90px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{min-height:46px;padding:8px 16px;border-radius:24px;border:1px solid var(--line);background:var(--bg2);color:var(--txt);font-size:16px;cursor:pointer}
+.chip.on{background:var(--acc);color:#05231f;border-color:var(--acc)}
+.chip.small{min-height:auto;padding:3px 10px;font-size:14px;cursor:default}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 0}
+summary{padding:16px;min-height:54px;font-weight:600;cursor:pointer;list-style:none}
+summary::after{content:"+";float:right;color:var(--acc)}
+details[open] summary::after{content:"–"}
+details .body{padding:0 16px 14px}
+.toggle{display:flex;justify-content:space-between;align-items:center;min-height:54px;border-bottom:1px solid var(--line);gap:10px}
+.toggle:last-child{border-bottom:0}
+.sw{width:58px;height:34px;border-radius:17px;background:#355;border:0;position:relative;flex:none;cursor:pointer}
+.sw::after{content:"";position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--acc2)}.sw.on::after{left:28px}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{min-height:44px;padding:0 16px;background:none;border:0;color:var(--txt);font-size:16px}
+.seg button.on{background:var(--acc);color:#05231f}
+.tag{font-size:13px;padding:2px 8px;border-radius:10px;background:#5a3b10;color:#ffd79a;margin-left:6px}
+.ref{font-weight:400;font-size:15px;color:#6f9993;opacity:.75;margin-left:8px}
+.theme{background:var(--bg2)}
+table.rv{width:100%;border-collapse:collapse;font-size:16px}table.rv td,table.rv th{padding:8px 4px;border-bottom:1px solid var(--line);text-align:left}
+input[type=time]{width:100%;background:var(--bg2);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:18px;min-height:52px}
+.banner{background:#24504a;border-left:4px solid var(--acc)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:15px;color:var(--dim)}.legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.cap{font-size:15px;margin:6px 0 0}
+.tag.ex{background:#233f6b;color:#bcd4ff}
+/* session overlay */
+#sess{position:fixed;inset:0;z-index:60;background:var(--bg);display:none;overflow:auto}
+#sess.show{display:block}
+#sess.dark{background:#020606;color:#5f7f7b}
+#sess .inner{max-width:560px;margin:0 auto;padding:24px 18px 40px;min-height:100%}
+#stopBtn{position:fixed;top:12px;right:12px;z-index:70;background:rgba(255,255,255,.06);color:#7a9a95;border:1px solid #244;border-radius:10px;min-height:44px;min-width:64px;font-size:15px;display:none}
+body.test #stopBtn{top:44px}
+.circleWrap{display:flex;justify-content:center;align-items:center;height:300px}
+.circle{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,#1f5f59,#0b2f2c);border:2px solid #1d4a46;display:flex;align-items:center;justify-content:center;font-size:40px;color:#7aa39d;transform:scale(1);transition-timing-function:ease-in-out}
+.cue{text-align:center;font-size:18px;color:#6f8f8a;min-height:56px}
+.big{font-size:48px;text-align:center;font-weight:300;color:#7aa39d}
+#tapZone{position:fixed;inset:0;z-index:65;display:none;align-items:center;justify-content:center;flex-direction:column;background:#020606;color:#5f7f7b;text-align:center;padding:24px}
+#tapZone .watch{font-size:22px;color:#4c6a66;margin:12px}
+#tapZone .lbl{font-size:20px;color:#6f8f8a;margin-top:30px}
+.modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px}
+.modal.show{display:flex}
+.modal .card{max-width:480px;width:100%;background:var(--bg2)}
+</style>
+</head>
+<body>
+<div id="testbar">TEST MODE</div>
+<main id="app"></main>
+<nav id="nav">
+  <button data-tab="practice">Practice</button>
+  <button data-tab="learn">Learn</button>
+  <button data-tab="log">Log</button>
+</nav>
+<div id="sess"><div class="inner" id="sessInner"></div></div>
+<button id="stopBtn">Stop</button>
+<div id="tapZone"><div class="cue" id="tapCue"></div><div class="watch" id="watch">0:00</div><div class="lbl">Tap anywhere to breathe in</div></div>
+<div class="modal" id="modal"><div class="card" id="modalCard"></div></div>
+<input type="file" id="importFile" accept=".json,application/json" style="display:none">
+
+<script>
+"use strict";
+/* ============ STORAGE ============ */
+var REAL_KEY="breathe_data", TEST_KEY="breathe_test", MODE_KEY="breathe_testmode", FAST_KEY="breathe_fast";
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
+function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
+var testMode = lsGet(MODE_KEY)==="1";
+var fastTimings = lsGet(FAST_KEY)==="1";
+function key(){return testMode?TEST_KEY:REAL_KEY;}
+
+function defaultData(){
+  return {
+    version:1,
+    settings:{pace:"normal",breathTones:true,voiceCues:true,showHolds:false,extraRound:false,bodyScan:false,morningTime:null,middayTime:null,eveningTime:null},
+    meta:{startedAt:null,lastFullSafety:null,signal:[],review28Done:false,maintenanceMode:null},
+    baseline:{date:null,sleep:null,irritability:null,switchOff:null,stress:null},
+    sessions:[],sighs:[],weekly:[],evenings:[],notes:""
+  };
+}
+function merge(d){
+  var def=defaultData();
+  if(!d||typeof d!=="object") return def;
+  var out=Object.assign({},def,d);
+  out.settings=Object.assign({},def.settings,d.settings||{});
+  out.meta=Object.assign({},def.meta,d.meta||{});
+  out.baseline=Object.assign({},def.baseline,d.baseline||{});
+  ["sessions","sighs","weekly","evenings"].forEach(function(k){if(!Array.isArray(out[k]))out[k]=[];});
+  if(!Array.isArray(out.meta.signal)) out.meta.signal=[];
+  if(typeof out.notes!=="string") out.notes="";
+  return out;
+}
+function load(){
+  try{var raw=localStorage.getItem(key());return raw?merge(JSON.parse(raw)):null;}catch(e){return null;}
+}
+var data=load();
+var firstLaunch=!data;
+if(!data) data=defaultData();
+function save(){try{localStorage.setItem(key(),JSON.stringify(data));}catch(e){alert("Could not save data on this device.");}}
+
+/* ============ HELPERS ============ */
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function pad(n){return (n<10?"0":"")+n;}
+function dayKey(d){d=d?new Date(d):new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+function fmtDate(iso){try{return new Date(iso).toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short",year:"numeric"});}catch(e){return iso;}}
+function fmtSec(s){s=Math.round(s);return Math.floor(s/60)+":"+pad(s%60);}
+function countedCount(){return data.sessions.filter(function(s){return s.counted;}).length;}
+function weekOf(day){return Math.max(1,Math.ceil(day/7));}
+function countedToday(){var t=dayKey();return data.sessions.some(function(s){return s.counted&&dayKey(s.date)===t;});}
+function lastSessionDate(){var l=null;data.sessions.forEach(function(s){if(!l||new Date(s.date)>new Date(l))l=s.date;});return l;}
+function daysBetween(a,b){var A=new Date(dayKey(a)),B=new Date(dayKey(b));return Math.round((B-A)/86400000);}
+function speed(){return (testMode&&fastTimings)?10:1;}
+function ms(x){return x/speed();}
+
+/* ============ AUDIO ============ */
+var actx=null;
+function ac(){try{if(!actx){var C=window.AudioContext||window.webkitAudioContext;if(C)actx=new C();}if(actx&&actx.state==="suspended")actx.resume();}catch(e){}return actx;}
+function tone(f1,f2,dur,vol){
+  var a=ac();if(!a)return;
+  try{
+    var o=a.createOscillator(),g=a.createGain(),t=a.currentTime;
+    o.type="sine";o.frequency.setValueAtTime(f1,t);o.frequency.linearRampToValueAtTime(f2,t+dur);
+    g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol||0.08,t+Math.min(0.3,dur/3));
+    g.gain.linearRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+dur+0.05);
+  }catch(e){}
+}
+function breathTone(inhale,dur){if(!data.settings.breathTones)return;if(inhale)tone(220,330,dur*0.95,0.06);else tone(330,200,dur*0.95,0.05);}
+var CHIMES={"Two more.":[660],"Last breath. Let go.":[660,880],"Let go and hold.":[523,392],"Breathe in whenever you're ready.":[440],"Breathe in. Hold.":[392,523,659],"Release.":[659,392],"Round two.":[523,523],"Round three.":[523,523,523],"Last round.":[784,659,523]};
+function chime(text){var seq=CHIMES[text]||[600];seq.forEach(function(f,i){setTimeout(function(){tone(f,f,0.6,0.09);},i*280);});}
+function say(text){
+  if(!data.settings.voiceCues)return;
+  var ok=false;
+  try{
+    if("speechSynthesis" in window && window.SpeechSynthesisUtterance && speechSynthesis.getVoices){
+      speechSynthesis.cancel();
+      var u=new SpeechSynthesisUtterance(text);u.rate=0.85;u.pitch=0.95;u.volume=0.8;
+      speechSynthesis.speak(u);ok=true;
+    }
+  }catch(e){ok=false;}
+  if(!ok)chime(text);
+}
+
+/* ============ WAKE LOCK ============ */
+var wakeLock=null;
+function lockOn(){try{if(navigator.wakeLock&&navigator.wakeLock.request){navigator.wakeLock.request("screen").then(function(w){wakeLock=w;}).catch(function(){});}}catch(e){}}
+function lockOff(){try{if(wakeLock){wakeLock.release();wakeLock=null;}}catch(e){}}
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S&&S.running)lockOn();});
+
+/* ============ TEXT ============ */
+var MOODS=["Calm","Clear","Settled","Restless","Heavy","Emotional","Tired"];
+var Q3=["Where did I feel tension release?","What helped me stay calm when my mind became busy?","What's one thing I'll keep doing after this challenge?"];
+var QROT=["What did I notice today that I didn't notice yesterday?","Where in my body do I hold stress?","What am I carrying into today?","What felt different in the hold today?","What would a calmer version of today look like?","What made it easy or hard to show up this morning?","Where did my mind go during the breaths?","What's one thing I can let go of today?","What do I need today?","How did yesterday's stress show up in my body?"];
+function questionFor(day){if(day>=1&&day<=3)return Q3[day-1];var d=Math.max(4,day);return QROT[(d-4)%QROT.length];}
+var SAFETY_FULL="Practice only sitting or lying down in a comfortable place — never while driving, standing, or in or near water. Never force the breath or the hold. Stop and breathe normally if you feel unwell. Consult a doctor first if you are pregnant or have epilepsy, heart disease, high blood pressure or another medical condition. If you're new or anxious, start gently.";
+function paras(t){return t.split("\n").map(function(p){return "<p>"+esc(p)+"</p>";}).join("");}
+var LEARN=[
+["What this practice is",paras("A breathing method with three parts, repeated over several rounds: a set of deep, fast breaths; a relaxed hold after breathing out; and a short recovery hold after breathing in. It comes from the Wim Hof Method, but the pattern itself is simple and can be done anywhere you can sit or lie down safely."),"what"],
+["How it works — what's happening in your body",paras("The 30 breaths: your blood is already about 98% saturated with oxygen, so deep breathing adds very little oxygen. What it mainly does is blow off carbon dioxide (CO2). Lower CO2 makes your blood slightly more alkaline. That is why you may feel tingling, light-headedness or a buzzing in your hands and face.\nThe hold: the urge to breathe is driven mostly by rising CO2, not falling oxygen. Because you've lowered your CO2, you can hold much longer than usual without strain. Meanwhile your oxygen level falls — sometimes a lot — without you feeling it. This is why the method must never be done in water or while driving: you can lose consciousness without warning.\nThe recovery breath: refills your lungs and brings oxygen back up quickly.\nThe stress effect: the fast breathing is a short, deliberate burst of arousal, and your nervous system tends to swing towards calm afterwards. Many people describe feeling clear and settled after the final round."),"how"],
+["What the evidence says (honestly)",paras("The best-known study (Kox et al., PNAS, 2014) found that people trained in this method released more adrenaline and had milder flu-like symptoms when injected with a bacterial toxin. This shows breathing can influence the stress and immune response.\nFor everyday stress and mood, the evidence is smaller. A 2023 Stanford study (Balban et al., Cell Reports Medicine) compared daily breathing practices over a month. All of them improved mood, but slow 'cyclic sighing' did slightly better than fast breathing with holds.\nIn short: this is a useful tool, not a cure. If stress or anxiety is persistent or severe, talk to a doctor."),"evidence"],
+["Is 3 days enough?",paras("Three days is enough to feel the immediate calming effect and to learn the technique. It is not enough for lasting change. The studies behind the bigger claims used 10 days to 4 weeks of daily practice, and habits usually take around two months to become automatic. So the 3-Day Challenge is the opening of Week 1, not a separate course. Four weeks is a fair test — and the snapshot you took before Day 1 is what you'll compare against."),"three"],
+["The 4-week programme",paras("Week 1 — Foundation: the morning practice every day. Learn the technique.\nWeek 2 — Consistency: fix a practice time and add a one-minute body scan.\nWeek 3 — A tool for the day: learn your early-warning signal and practise cyclic sighing daily at midday.\nWeek 4 — Integration: an evening check-in on how early you caught stress building.\nDay 28 — Review: compare your four numbers against Day 0 and decide how to continue."),"programme"],
+["Cyclic sighing",paras("A slow breathing pattern: two inhales through the nose (one full, one short top-up), then a long exhale through the mouth. The long exhale slows the heart rate and settles the nervous system. In the 2023 Stanford study, five minutes a day of cyclic sighing improved mood slightly more than the other breathing practices tested. It involves no fast breathing and no breath holds, so it is safe to use sitting or standing, at work, or anywhere during the day."),"sighing"],
+["Your early-warning signal",paras("Stress usually shows up in the body before you notice it in your mind — a clenched jaw, tight shoulders, a held breath. Everyone has a first signal. Learning yours is what lets you use the breath early, when it still works, instead of late, when you're already overwhelmed. A breathing tool you haven't practised won't come to mind under pressure. That is why the sighing is practised daily first, and used on demand second."),"signal"],
+["What's normal, what's not","<p><strong>Normal:</strong> tingling, light-headedness, warmth or cold, a buzzing feeling, mild stiffness in the hands, emotion coming up.</p><p><strong>Stop and breathe normally if:</strong> you feel faint, have chest pain or palpitations, feel panicky, or your vision goes dark.</p>"+paras("If your hands cramp, you're breathing too hard. Slow down and breathe less forcefully."),"normal"],
+["Tips","<ul>"+["Practise on an empty stomach, within an hour of waking.","Same place, same time each day. Habit is built by repetition, not effort.","On a rushed morning, do the short session. A short session beats a skipped one.","Retention times will vary from day to day. That isn't progress or failure, just information.","Don't compete with your previous hold. That's why hold times are hidden by default.","The weekly snapshot matters more than any single session. It shows whether the change is lasting."].map(function(t){return "<li><p>"+esc(t)+"</p></li>";}).join("")+"</ul>","tips"],
+["Why the reflection matters",paras("The practice stays the same each day. What changes is what you notice. Even one word after each session turns a breathing exercise into self-observation. Over time you can see your own pattern instead of taking anyone's word for it."),"reflection"]
+];
+
+/* ============ ROUTING ============ */
+var tab="practice", view=null, openLearn=null;
+function setTab(t){tab=t;view=null;render();window.scrollTo(0,0);}
+document.querySelectorAll("nav button").forEach(function(b){b.onclick=function(){setTab(b.dataset.tab);};});
+function render(){
+  document.body.classList.toggle("test",testMode);
+  document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("on",b.dataset.tab===tab&&!view);});
+  var app=$("app");
+  if(view==="onboard"){document.body.classList.add("noNav");app.innerHTML=onboardHTML();bindOnboard();return;}
+  document.body.classList.remove("noNav");
+  if(view==="settings"){app.innerHTML=settingsHTML();bindSettings();return;}
+  if(view==="report"){app.innerHTML=reportHTML();bindReport();return;}
+  if(view==="weekly"){app.innerHTML=weeklyHTML();bindWeekly();return;}
+  if(view==="review"){app.innerHTML=reviewHTML();bindReview();return;}
+  if(view==="signal"){app.innerHTML=signalHTML();bindSignal();return;}
+  if(tab==="practice"){var g=gate();if(g){view=g;render();return;}app.innerHTML=practiceHTML();bindPractice();}
+  else if(tab==="learn"){app.innerHTML=learnHTML();bindLearn();}
+  else {app.innerHTML=logHTML();bindLog();}
+}
+
+/* ============ SLIDER ============ */
+function sliderHTML(id,label,lo,hi,val,ref){
+  return '<div class="card"><h3>'+esc(label)+(ref!=null?' <span class="ref">Day 0: '+esc(ref)+'</span>':'')+'</h3><div class="sval" id="'+id+'_v">'+val+'</div>'+
+  '<input type="range" min="1" max="10" step="1" value="'+val+'" id="'+id+'" aria-label="'+esc(label)+'">'+
+  '<div class="slab"><span>'+esc(lo)+'</span><span>'+esc(hi)+'</span></div></div>';
+}
+function bindSlider(id){var s=$(id);if(s)s.oninput=function(){$(id+"_v").textContent=s.value;};}
+
+/* ============ ONBOARDING ============ */
+var obStep=1;
+function onboardHTML(){
+  if(obStep===1) return '<div style="padding-top:18vh"><h1>Breathe.</h1><p style="font-size:20px">A morning breathing practice — three days to try it, four weeks to test it, and as long as you like after that.</p><button class="btn" id="obNext">Continue</button></div>';
+  if(obStep===2) return '<h2>Before you start, a quick snapshot of where you are now.</h2>'+
+    sliderHTML("b_sleep","Sleep quality","1 = poor","10 = excellent",5)+
+    sliderHTML("b_irr","Irritability","1 = low","10 = high",5)+
+    sliderHTML("b_sw","Ability to switch off after work","1 = hard","10 = easy",5)+
+    sliderHTML("b_st","Overall stress","1 = low","10 = high",5)+
+    '<button class="btn" id="obSave">Save</button>';
+  return '<div style="padding-top:18vh"><p style="font-size:20px">Read \'How it works\' in Learn before your first session. It takes 3 minutes.</p><button class="btn" id="obRead">Read now</button><button class="btn sec" id="obLater">Later</button></div>';
+}
+function bindOnboard(){
+  if(obStep===1){$("obNext").onclick=function(){obStep=2;render();window.scrollTo(0,0);};}
+  else if(obStep===2){["b_sleep","b_irr","b_sw","b_st"].forEach(bindSlider);
+    $("obSave").onclick=function(){
+      data.baseline={date:new Date().toISOString(),sleep:+$("b_sleep").value,irritability:+$("b_irr").value,switchOff:+$("b_sw").value,stress:+$("b_st").value};
+      if(!data.meta.startedAt)data.meta.startedAt=new Date().toISOString();
+      save();obStep=3;render();window.scrollTo(0,0);};}
+  else{
+    $("obRead").onclick=function(){view=null;tab="learn";openLearn="how";render();};
+    $("obLater").onclick=function(){view=null;tab="practice";render();};
+  }
+}
+
+/* ============ PRACTICE HOME ============ */
+function practiceHTML(){
+  var n=countedCount(), h='';
+  h+='<div class="hdr"><h1>Breathe</h1><button class="gear" id="gear" aria-label="Settings">⚙</button></div>';
+  h+=reminderBanners();
+  var th=themeFor(n);h+='<div class="card theme"><div class="dim">'+esc(th[0])+'</div><div>'+esc(th[1])+'</div></div>';
+  if(n>=28&&data.meta.review28Done&&!data.meta.seen.maint)h+='<div class="card"><p>Four weeks done. From here, the practice is yours.</p><button class="btn sec" id="maintOk">OK</button></div>';
+  if(n>=7&&!data.meta.seen.w2)h+='<div class="card"><p>Pick your practice time. A fixed time makes this automatic.</p><input type="time" id="mTime" value="'+esc(data.settings.morningTime||"07:00")+'"><button class="btn" id="mTimeSave">Save</button></div>';
+  var last=lastSessionDate();
+  if(last&&daysBetween(last,new Date())>=3) h+='<div class="card"><p>Welcome back. Pick up where you left off.</p></div>';
+  if(n<3){
+    var names=["Breathe & Reset","Breathe & Repeat","Breathe & Continue"];
+    h+='<h2>3-Day Challenge</h2>';
+    for(var i=0;i<3;i++){
+      var d=i+1, done=d<=n, active=d===n+1;
+      var s=data.sessions.filter(function(x){return x.counted&&x.programmeDay===d;})[0];
+      h+='<div class="card daycard'+(done?' done':'')+(active?' active':'')+'"><div class="num">'+(done?'✓':d)+'</div><div><div><strong>Day '+d+'</strong> · '+esc(names[i])+'</div>'+
+        (done&&s?'<div class="dim">'+esc(s.before)+' → '+esc(s.after)+'</div>':'')+(active&&countedToday()?'<div class="dim">Today\'s session is done.</div>':'')+'</div></div>';
+    }
+  } else if(n<28){
+    h+='<h2>Week '+weekOf(n+1)+' · Day '+(n+1)+'</h2>';
+  } else if(n===28 && !countedToday()){
+    h+='<h2>Maintenance</h2>';
+  } else {
+    h+='<h2>Maintenance</h2>';
+  }
+  var mm=data.meta.maintenanceMode, sighOnly=n>=28&&mm==="sighing";
+  if(n>=28&&mm==="3-4")h+='<div class="card"><p>This week: '+thisWeekCount()+' of 3–4</p></div>';
+  if(n>=14&&sighOnly)h+=middayCardHTML();
+  if(n>=21)h+=eveningCardHTML();
+  h+='<p class="dim">The practice stays the same each day. What changes is what you notice.</p>';
+  h+='<button class="btn'+(sighOnly?' sec':'')+'" id="goFull">Full session (about 12–15 min)</button>';
+  h+='<button class="btn sec" id="goShort">Short session (about 7 min)</button>';
+  if(n>=14){h+='<button class="btn sec" id="goSigh">Sigh — calm in a minute</button>';if(!sighOnly)h+=middayCardHTML();}
+  h+='<div class="badges"><span class="badge">10–15 min daily</span><span class="badge">Empty stomach, within an hour of waking</span><span class="badge">No equipment</span></div>';
+  return h;
+}
+function bindPractice(){
+  $("gear").onclick=function(){view="settings";render();window.scrollTo(0,0);};
+  $("goFull").onclick=function(){startFlow("full");};
+  $("goShort").onclick=function(){startFlow("short");};
+  bindPhase2Home();
+}
+
+/* ============ LEARN ============ */
+function learnHTML(){
+  var h='<h1>Learn</h1>';
+  LEARN.forEach(function(L,i){h+='<details id="L_'+L[2]+'"'+(openLearn===L[2]?' open':'')+'><summary>'+(i+1)+'. '+esc(L[0])+'</summary><div class="body">'+L[1]+'</div></details>';});
+  return h;
+}
+function bindLearn(){if(openLearn){var el=$("L_"+openLearn);openLearn=null;if(el)setTimeout(function(){el.scrollIntoView({block:"start"});},30);}}
+
+/* ============ LOG ============ */
+function logHTML(){
+  var b=data.baseline,h='<h1>Log</h1>';
+  h+='<div class="card"><h3>Day 0 baseline</h3>';
+  if(b&&b.date){h+='<p class="dim">'+esc(fmtDate(b.date))+'</p><p>Sleep quality: '+esc(b.sleep)+'<br>Irritability: '+esc(b.irritability)+'<br>Ability to switch off after work: '+esc(b.switchOff)+'<br>Overall stress: '+esc(b.stress)+'</p>';}
+  else h+='<p class="dim">No baseline saved.</p>';
+  h+='</div>'+progressHTML()+'<h2>Sessions</h2>';
+  var list=data.sessions.slice().sort(function(a,c){return new Date(c.date)-new Date(a.date);});
+  if(!list.length)h+='<p class="dim">No sessions yet.</p>';
+  list.forEach(function(s){
+    h+='<div class="card"><div class="dim">'+esc(fmtDate(s.date))+'</div><div><strong>Day '+esc(s.programmeDay)+'</strong> · '+(s.type==="short"?"short":"full")+
+      (!s.completed?'<span class="tag">stopped</span>':(!s.counted?'<span class="tag ex">extra</span>':''))+'</div>';
+    h+='<div>'+(s.before!=null?esc(s.before):'–')+' → '+(s.after!=null?esc(s.after):'–')+'</div>';
+    if(s.mood&&s.mood.length)h+='<div class="chips">'+s.mood.map(function(m){return '<span class="chip small">'+esc(m)+'</span>';}).join("")+'</div>';
+    if(s.reflection)h+='<p><em>'+esc(s.reflection)+'</em></p>';
+    if(data.settings.showHolds&&s.holds&&s.holds.length)h+='<div class="dim">Holds: '+s.holds.map(fmtSec).join(" · ")+'</div>';
+    h+='</div>';
+  });
+  h+='<h2>Notes</h2><textarea id="notes" placeholder="Notes">'+esc(data.notes)+'</textarea>';
+  return h;
+}
+function bindLog(){drawCharts();$("viewReport").onclick=function(){view="report";render();window.scrollTo(0,0);};var t=$("notes");t.oninput=function(){data.notes=t.value;save();};}
+
+/* ============ SETTINGS ============ */
+function swHTML(id,on){return '<button class="sw'+(on?' on':'')+'" id="'+id+'" role="switch" aria-checked="'+on+'"></button>';}
+function settingsHTML(){
+  var s=data.settings,h='<div class="hdr"><h1>Settings</h1><button class="btn sec" style="width:auto" id="back">Done</button></div>';
+  h+='<div class="card">';
+  h+='<div class="toggle"><span>Breathing pace</span><div class="seg"><button id="pN" class="'+(s.pace!=="slow"?"on":"")+'">normal</button><button id="pS" class="'+(s.pace==="slow"?"on":"")+'">slow</button></div></div>';
+  h+='<div class="toggle"><span>Breath tones</span>'+swHTML("sTones",s.breathTones)+'</div>';
+  h+='<div class="toggle"><span>Voice cues</span>'+swHTML("sVoice",s.voiceCues)+'</div>';
+  h+='<div class="toggle"><span>Show hold times<br><span class="dim" style="font-size:15px">Hold times are hidden so you don\'t compete with them.</span></span>'+swHTML("sHolds",s.showHolds)+'</div>';
+  h+=settings2HTML();
+  h+='</div><div class="card"><h3>Data</h3><button class="btn sec" id="exp">Export data</button><button class="btn sec" id="imp">Import data</button><button class="btn danger" id="rst">Reset all data</button></div>';
+  h+='<div class="card"><div class="toggle"><span>Test mode</span>'+swHTML("sTest",testMode)+'</div>';
+  if(testMode){
+    h+='<h3>Test tools</h3><p>Jump to programme day</p><div class="row"><input type="number" id="jumpN" min="0" max="60" value="4"><button class="btn sec" id="jump" style="margin:0">Jump</button></div>';
+    h+='<button class="btn sec" id="fill">Fill 28 days of sample data</button>';
+    h+='<div class="toggle"><span>Fast timings (10×)</span>'+swHTML("sFast",fastTimings)+'</div>';
+  }
+  h+='</div>';
+  return h;
+}
+function bindSettings(){
+  var s=data.settings;
+  $("back").onclick=function(){view=null;tab="practice";render();};
+  $("pN").onclick=function(){s.pace="normal";save();render();};
+  $("pS").onclick=function(){s.pace="slow";save();render();};
+  $("sTones").onclick=function(){s.breathTones=!s.breathTones;save();render();};
+  $("sVoice").onclick=function(){s.voiceCues=!s.voiceCues;save();render();};
+  $("sHolds").onclick=function(){s.showHolds=!s.showHolds;save();render();};
+  bindSettings2();
+  $("exp").onclick=exportData;
+  $("imp").onclick=function(){$("importFile").value="";$("importFile").click();};
+  $("rst").onclick=resetFlow;
+  $("sTest").onclick=function(){
+    testMode=!testMode;lsSet(MODE_KEY,testMode?"1":"0");
+    var d=load();firstLaunch=!d;data=d||defaultData();
+    if(firstLaunch){obStep=1;view="onboard";}
+    render();window.scrollTo(0,0);
+  };
+  if(testMode){
+    $("jump").onclick=function(){var n=parseInt($("jumpN").value,10);if(isNaN(n)||n<0)return;jumpTo(n);alert("Jumped to programme day "+n+".");render();window.scrollTo(0,0);};
+    $("fill").onclick=function(){if(confirm("Replace test data with 28 days of sample data?")){fillSample();alert("Sample data created.");render();}};
+    $("sFast").onclick=function(){fastTimings=!fastTimings;lsSet(FAST_KEY,fastTimings?"1":"0");render();};
+  }
+}
+function exportData(){
+  try{
+    var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="breathe-backup-"+dayKey()+".json";
+    document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);
+  }catch(e){alert("Export failed.");}
+}
+function validate(d){
+  if(!d||typeof d!=="object"||Array.isArray(d))return false;
+  if(typeof d.version!=="number")return false;
+  if(!d.settings||typeof d.settings!=="object")return false;
+  if(!d.meta||typeof d.meta!=="object")return false;
+  if(!d.baseline||typeof d.baseline!=="object")return false;
+  var arrs=["sessions","sighs","weekly","evenings"];
+  for(var i=0;i<arrs.length;i++)if(!Array.isArray(d[arrs[i]]))return false;
+  for(var j=0;j<d.sessions.length;j++){var s=d.sessions[j];if(!s||typeof s!=="object"||!s.date||(s.type!=="full"&&s.type!=="short"))return false;}
+  if(d.notes!=null&&typeof d.notes!=="string")return false;
+  return true;
+}
+$("importFile").onchange=function(e){
+  var f=e.target.files&&e.target.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    var d;try{d=JSON.parse(r.result);}catch(err){alert("That file isn't valid JSON.");return;}
+    if(!validate(d)){alert("That file doesn't look like a Breathe backup.");return;}
+    if(!confirm("Replace all current data"+(testMode?" (test data)":"")+" with this backup? This cannot be undone."))return;
+    data=merge(d);save();firstLaunch=false;render();alert("Data imported.");
+  };
+  r.readAsText(f);
+};
+function resetFlow(){
+  modal('<h3>Reset all data</h3><p>Type RESET to confirm.</p><input type="text" id="rstIn" autocomplete="off"><div class="row"><button class="btn sec" id="rstNo">Cancel</button><button class="btn danger" id="rstYes">Reset</button></div>');
+  $("rstNo").onclick=closeModal;
+  $("rstYes").onclick=function(){
+    if($("rstIn").value.trim()!=="RESET"){alert("Type RESET to confirm.");return;}
+    lsDel(key());data=defaultData();closeModal();obStep=1;view="onboard";render();
+  };
+}
+function modal(html){$("modalCard").innerHTML=html;$("modal").classList.add("show");}
+function closeModal(){$("modal").classList.remove("show");}
+
+/* ============ TEST TOOLS ============ */
+function jumpTo(n){
+  var keep=data.sessions.filter(function(s){return !s.counted;});
+  var out=[],now=new Date();
+  for(var i=1;i<=n;i++){
+    var d=new Date(now);d.setDate(d.getDate()-(n-i+1));d.setHours(7,0,0,0);
+    out.push({id:uid(),date:d.toISOString(),type:"full",completed:true,counted:true,programmeDay:i,before:null,after:null,holds:[],mood:[],reflection:"",bodyScanDone:false});
+  }
+  data.sessions=out.concat(keep);
+  if(!data.baseline.date){var b=new Date(now);b.setDate(b.getDate()-n-1);data.baseline={date:b.toISOString(),sleep:5,irritability:5,switchOff:5,stress:5};}
+  if(!data.meta.startedAt)data.meta.startedAt=data.baseline.date;
+  var cw=n>=28?5:weekOf(n+1);data.meta.seen={w2:cw>2,w3:cw>3,maint:n>28};if(cw<3)data.meta.signal=[];if(cw>3&&!data.meta.signal.length)data.meta.signal=["Tight shoulders"];if(cw>2&&!data.settings.morningTime)data.settings.morningTime="07:00";if(cw>2)data.settings.bodyScan=true;if(n<=28){data.meta.review28Done=false;data.meta.maintenanceMode=null;}
+  data.weekly=data.weekly.filter(function(w){return w.week<Math.floor(n/7);});
+  var lastW=(n%7===0)?n/7-1:Math.floor(n/7);
+  for(var w=1;w<=lastW;w++){if(!data.weekly.some(function(x){return x.week===w;})){var wd=new Date(now);wd.setDate(wd.getDate()-(n-w*7+1));data.weekly.push({date:wd.toISOString(),week:w,sleep:data.baseline.sleep,irritability:data.baseline.irritability,switchOff:data.baseline.switchOff,stress:data.baseline.stress,note:""});}}
+  data.weekly.sort(function(x,y){return x.week-y.week;});
+  if(n>28){data.meta.review28Done=true;if(!data.meta.maintenanceMode)data.meta.maintenanceMode="daily";}
+  save();view=null;tab="practice";
+}
+function rnd(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function clamp(v){return Math.max(1,Math.min(10,Math.round(v)));}
+function fillSample(){
+  var now=new Date(),start=new Date(now);start.setDate(start.getDate()-31);start.setHours(7,0,0,0);
+  var settings=data.settings;data=defaultData();data.settings=settings;
+  data.baseline={date:new Date(start.getTime()-86400000).toISOString(),sleep:4,irritability:7,switchOff:3,stress:7};
+  data.meta.startedAt=data.baseline.date;data.meta.lastFullSafety=new Date(now.getTime()-3*86400000).toISOString();
+  data.meta.signal=["Jaw clenching","Tight shoulders"];data.meta.seen={w2:true,w3:true};data.settings.morningTime="07:00";data.settings.middayTime="12:30";data.settings.bodyScan=true;
+  var refl=["Shoulders let go in round two.","Busy mind, came back to the count.","Calmer than yesterday.","Heavy start, lighter after.","Noticed my jaw.","",""];
+  var day=0,cal=new Date(start);
+  while(day<28){
+    if(Math.random()<0.12){cal.setDate(cal.getDate()+1);continue;} // missed day
+    day++;
+    var prog=day/28,before=clamp(rnd(5,8)-prog*2+rnd(-1,1)),after=clamp(before-rnd(2,4));
+    var t=new Date(cal);t.setHours(6+rnd(0,2),rnd(0,59));
+    var type=Math.random()<0.25?"short":"full",rounds=type==="short"?2:3,holds=[];
+    for(var r=0;r<rounds;r++)holds.push(rnd(40,75)+Math.round(prog*40)+r*rnd(5,15));
+    data.sessions.push({id:uid(),date:t.toISOString(),type:type,completed:true,counted:true,programmeDay:day,before:before,after:after,holds:holds,
+      mood:MOODS.filter(function(){return Math.random()<0.25;}).slice(0,3),reflection:pick(refl),bodyScanDone:day>7&&Math.random()<0.7});
+    if(Math.random()<0.1){var t2=new Date(t);t2.setHours(18);data.sessions.push({id:uid(),date:t2.toISOString(),type:"short",completed:Math.random()<0.5,counted:false,programmeDay:day,before:rnd(4,7),after:null,holds:[rnd(30,60)],mood:[],reflection:"",bodyScanDone:false});}
+    if(day>14){var m=new Date(cal);m.setHours(12,30);var sb=rnd(4,8);data.sighs.push({id:uid(),date:m.toISOString(),minutes:5,before:sb,after:clamp(sb-rnd(1,3)),trigger:"",scheduled:true});
+      if(Math.random()<0.5){var od=new Date(cal);od.setHours(rnd(9,17));var ob=rnd(5,9);data.sighs.push({id:uid(),date:od.toISOString(),minutes:pick([1,2,3]),before:ob,after:clamp(ob-rnd(1,3)),trigger:pick(SIGH_TAGS),scheduled:false});}}
+    if(day>21){var e=new Date(cal);e.setHours(21);data.evenings.push({date:e.toISOString(),moment:pick(["Late meeting","Traffic","Deadline","Call with family"]),usedBreath:pick(["Yes","No","Forgot"]),noticedWhen:pick(["Early","Midway","Too late"]),signalNoticed:pick(["Yes","No","Didn't come up"])});}
+    if(day%7===0){var w=day/7;data.weekly.push({date:t.toISOString(),week:w,sleep:clamp(4+w*0.8+rnd(-1,1)),irritability:clamp(7-w*0.8+rnd(-1,1)),switchOff:clamp(3+w+rnd(-1,1)),stress:clamp(7-w+rnd(-1,1)),note:pick(["Steady week.","Harder week at work.","Sleeping better.",""])});}
+    cal.setDate(cal.getDate()+1);
+  }
+  data.notes="Sample notes for testing.";
+  save();
+}
+
+/* ============ SESSION FLOW ============ */
+var S=null, timers=[];
+function T(fn,d){var id=setTimeout(fn,ms(d));timers.push(id);return id;}
+function clearT(){timers.forEach(clearTimeout);timers=[];if(S&&S.raf)cancelAnimationFrame(S.raf);}
+function sessShow(html,dark){$("sess").classList.add("show");$("sess").classList.toggle("dark",!!dark);$("sessInner").innerHTML=html;$("sess").scrollTop=0;}
+function sessHide(){$("sess").classList.remove("show","dark");$("stopBtn").style.display="none";$("tapZone").style.display="none";}
+function startFlow(type){
+  ac();
+  S={type:type,rounds:type==="short"?2:(data.settings.extraRound?4:3),round:0,holds:[],before:null,after:null,mood:[],reflection:"",running:false};
+  var needFull=!data.meta.lastFullSafety||(Date.now()-new Date(data.meta.lastFullSafety).getTime())>=7*86400000;
+  if(needFull){
+    sessShow('<h2>Safety</h2><p>'+esc(SAFETY_FULL)+'</p><button class="btn" id="safeOk">I\'m sitting or lying down safely</button><button class="btn sec" id="cancel">Cancel</button>');
+    $("safeOk").onclick=function(){data.meta.lastFullSafety=new Date().toISOString();save();beforeStep();};
+  } else {
+    sessShow('<h2>Safety</h2><p>Sitting or lying down, and nowhere near water?</p><button class="btn" id="safeOk">Yes</button><button class="btn sec" id="cancel">Cancel</button>');
+    $("safeOk").onclick=beforeStep;
+  }
+  $("cancel").onclick=function(){S=null;sessHide();};
+}
+function beforeStep(){
+  sessShow('<h2>Before</h2>'+sliderHTML("sBefore","How stressed do you feel right now?","1 = calm","10 = very stressed",5)+'<p class="dim">Don\'t think too long. Your first number is the honest one.</p><button class="btn" id="bNext">Next</button>');
+  bindSlider("sBefore");
+  $("bNext").onclick=function(){S.before=+$("sBefore").value;startStep();};
+}
+function startStep(){
+  sessShow('<div style="padding-top:16vh;text-align:center"><p style="font-size:20px">Close your eyes if you like. The audio will guide you.</p><button class="btn" id="go" style="min-height:120px;font-size:28px;border-radius:60px;margin-top:40px">Start</button></div>');
+  $("go").onclick=function(){
+    ac();
+    try{if(window.speechSynthesis){var u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u);}}catch(e){}
+    S.running=true;lockOn();$("stopBtn").style.display="block";S.round=1;breathsPhase();
+  };
+}
+$("stopBtn").onclick=function(e){e.stopPropagation();if(S&&S.sigh)sighStop();else stopSession();};
+function stopSession(){
+  if(!S)return;
+  clearT();try{speechSynthesis.cancel();}catch(e){}
+  var n=countedCount();
+  data.sessions.push({id:uid(),date:new Date().toISOString(),type:S.type,completed:false,counted:false,programmeDay:n+1,before:S.before,after:null,holds:S.holds.slice(),mood:[],reflection:"",bodyScanDone:!!S.bodyScanDone});
+  save();S.running=false;lockOff();S=null;sessHide();render();
+}
+function breathsPhase(){
+  var inS=data.settings.pace==="slow"?3:2, i=0;
+  sessShow('<p class="cue" style="margin-top:40px">Round '+S.round+' of '+S.rounds+'</p><div class="circleWrap"><div class="circle" id="circ">0</div></div><p class="cue">Full breath into belly, then chest. Let it go. Don\'t push the exhale.</p>',true);
+  var c=$("circ");
+  function breath(){
+    if(!S||!S.running)return;
+    i++;c.textContent=i;
+    var dur=inS/speed();
+    c.style.transitionDuration=dur+"s";c.style.transform="scale(2.3)";breathTone(true,dur);
+    if(i===28)say("Two more.");
+    if(i===30)say("Last breath. Let go.");
+    T(function(){c.style.transform="scale(1)";breathTone(false,dur);
+      T(function(){if(i<30)breath();else retention();},inS*1000);},inS*1000);
+  }
+  T(breath,600);
+}
+function retention(){
+  if(!S||!S.running)return;
+  say("Let go and hold.");
+  sessShow('',true);
+  var tz=$("tapZone");$("tapCue").textContent="Exhale and let go. Hold only as long as it's comfortable.";
+  tz.style.display="flex";
+  var t0=performance.now(),nextVoice=150,armed=false;
+  T(function(){armed=true;},2000);
+  function tick(){
+    if(!S||!S.running)return;
+    var sec=(performance.now()-t0)/1000*speed();
+    $("watch").textContent=fmtSec(Math.floor(sec));
+    if(sec>=nextVoice){say("Breathe in whenever you're ready.");nextVoice+=30;}
+    S.raf=requestAnimationFrame(tick);
+  }
+  tick();
+  tz.onclick=function(){
+    if(!armed)return;
+    tz.onclick=null;cancelAnimationFrame(S.raf);
+    S.holds.push(Math.round((performance.now()-t0)/1000*speed()));
+    tz.style.display="none";recovery();
+  };
+}
+function recovery(){
+  say("Breathe in. Hold.");
+  var left=15;
+  sessShow('<p class="cue" style="margin-top:60px">Big breath in. Hold.</p><div class="circleWrap"><div class="circle" id="circ" style="transform:scale(2.3)">15</div></div>',true);
+  function step(){
+    if(!S||!S.running)return;
+    left--;if($("circ"))$("circ").textContent=left;
+    if(left>0)T(step,1000);
+    else{say("Release.");var c=$("circ");if(c){c.style.transitionDuration=(2/speed())+"s";c.style.transform="scale(1)";}
+      if(S.round>=S.rounds)T(bodyScanEnabled()?bodyScan:afterStep,2500);else T(pause,1500);}
+  }
+  T(step,1000);
+}
+function pause(){
+  S.round++;
+  var line=S.round===S.rounds?"Last round.":(S.round===2?"Round two.":"Round three.");
+  say(line);
+  var left=10;
+  sessShow('<p class="cue" style="margin-top:80px">'+esc(line)+'</p><div class="big" id="pz">10</div>',true);
+  function step(){if(!S||!S.running)return;left--;if($("pz"))$("pz").textContent=left;if(left>0)T(step,1000);else breathsPhase();}
+  T(step,1000);
+}
+function afterStep(){
+  S.running=false;lockOff();$("stopBtn").style.display="none";
+  sessShow('<h2>After</h2>'+sliderHTML("sAfter","How stressed do you feel right now?","1 = calm","10 = very stressed",5)+'<p class="dim">Don\'t think too long. Your first number is the honest one.</p><button class="btn" id="aNext">Next</button>');
+  bindSlider("sAfter");
+  $("aNext").onclick=function(){S.after=+$("sAfter").value;reflectStep();};
+}
+function reflectStep(){
+  var willCount=!countedToday(), day=willCount?countedCount()+1:Math.max(1,countedCount());
+  S.willCount=willCount;S.day=day;
+  var h='<h2>Reflection</h2><div class="chips">'+MOODS.map(function(m){return '<button class="chip" data-m="'+m+'">'+m+'</button>';}).join("")+'</div>';
+  h+='<p class="dim">Take a moment to notice your shift — even a small change is worth noticing.</p>';
+  h+='<div class="card"><h3>'+esc(questionFor(day))+'</h3><textarea id="refl" placeholder="Optional"></textarea></div>';
+  h+='<div class="row"><button class="btn sec" id="skip">Skip</button><button class="btn" id="rSave">Save</button></div>';
+  sessShow(h);
+  document.querySelectorAll("#sessInner .chip").forEach(function(b){b.onclick=function(){b.classList.toggle("on");};});
+  function finish(withText){
+    S.mood=Array.prototype.map.call(document.querySelectorAll("#sessInner .chip.on"),function(b){return b.dataset.m;});
+    S.reflection=withText?$("refl").value.trim():"";
+    finishSession();
+  }
+  $("skip").onclick=function(){finish(false);};
+  $("rSave").onclick=function(){finish(true);};
+}
+function finishSession(){
+  S.finishedCount=true;
+  data.sessions.push({id:uid(),date:new Date().toISOString(),type:S.type,completed:true,counted:S.willCount,programmeDay:S.day,before:S.before,after:S.after,holds:S.holds.slice(),mood:S.mood,reflection:S.reflection,bodyScanDone:!!S.bodyScanDone});
+  if(!data.meta.startedAt)data.meta.startedAt=new Date().toISOString();
+  save();
+  var h='<div style="padding-top:14vh;text-align:center"><h1>Session complete.</h1><p class="sval">'+S.before+' → '+S.after+'</p>';
+  if(S.willCount&&S.day===3)h+='<p>Three days is a beginning, not a finish line. You\'ve just finished the first part of Week 1 — keep going.</p>';
+  h+='<button class="btn" id="dDone">Done</button></div>';
+  sessShow(h);
+  $("dDone").onclick=function(){S=null;sessHide();tab="practice";view=null;render();};
+}
+
+/* ============ PHASE 2 ============ */
+if(!data.meta.seen||typeof data.meta.seen!=="object")data.meta.seen={};
+var THEMES=[["Week 1 · Foundation","Learn the rhythm. Don't chase hold times."],["Week 2 · Consistency","Same time, same place. Let the habit do the work."],["Week 3 · A tool for the day","Calm in a quiet room is practice. Calm in a busy day is the skill."],["Week 4 · Integration","Notice stress earlier, and reach for the breath sooner."]];
+var SIGNALS=["Jaw clenching","Tight shoulders","Holding my breath","Shallow breathing","Irritability","Stomach tension","Racing thoughts","Restless hands or legs"];
+var SIGH_TAGS=["Work","People","Traffic","Thoughts","Other"];
+var BODY_SCAN="Notice where you feel calm. Notice where tension is still sitting. Don't fix anything, just notice.";
+function ensureSeen(){if(!data.meta.seen||typeof data.meta.seen!=="object")data.meta.seen={};}
+function themeFor(n){if(n>=28)return ["Maintenance","The practice is yours now."];return THEMES[weekOf(n+1)-1];}
+function todayHas(arr,f){var t=dayKey();return arr.some(function(x){return dayKey(x.date)===t&&(!f||f(x));});}
+function thisWeekCount(){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return data.sessions.filter(function(s){return s.completed&&s.counted&&new Date(s.date)>=d;}).length;}
+function bodyScanEnabled(){var day=countedToday()?countedCount():countedCount()+1;if(day>=8&&day<=14)return true;return day>14&&!!data.settings.bodyScan;}
+function weeklyDue(){
+  ensureSeen();var n=countedCount();
+  if(n>=28&&data.meta.review28Done&&data.meta.maintenanceMode==="sighing"){
+    var last=data.weekly.length?data.weekly[data.weekly.length-1].date:null;
+    if(!last||daysBetween(last,new Date())>=7)return {week:(data.weekly.length?Math.max.apply(null,data.weekly.map(function(w){return w.week||0;})):4)+1};
+    return null;
+  }
+  if(n<7)return null;var w=Math.floor(n/7);
+  if(data.weekly.some(function(x){return x.week===w;}))return null;
+  if(!data.sessions.some(function(s){return s.counted&&s.programmeDay===w*7;}))return null;
+  return {week:w};
+}
+var reviewLater=false, weeklyLater=false, eveningSkipped=null;
+function gate(){
+  ensureSeen();var n=countedCount();
+  if(!weeklyLater&&weeklyDue())return "weekly";
+  if(!reviewLater&&n>=28&&!data.meta.review28Done&&data.weekly.some(function(w){return w.week===4;}))return "review";
+  if(n>=14&&!data.meta.seen.w3)return "signal";
+  return null;
+}
+/* weekly check-in */
+function weeklyHTML(){
+  var b=data.baseline||{},due=weeklyDue()||{week:Math.floor(countedCount()/7)};
+  return '<h1>Weekly check-in</h1><p class="dim">Week '+due.week+'</p>'+
+    sliderHTML("w_sleep","Sleep quality","1 = poor","10 = excellent",5,b.sleep)+
+    sliderHTML("w_irr","Irritability","1 = low","10 = high",5,b.irritability)+
+    sliderHTML("w_sw","Ability to switch off after work","1 = hard","10 = easy",5,b.switchOff)+
+    sliderHTML("w_st","Overall stress","1 = low","10 = high",5,b.stress)+
+    '<div class="card"><h3>What changed this week?</h3><textarea id="w_note"></textarea></div><button class="btn" id="wSave">Save</button><button class="btn sec" id="wLater">Later</button>';
+}
+function bindWeekly(){
+  ["w_sleep","w_irr","w_sw","w_st"].forEach(bindSlider);
+  $("wSave").onclick=function(){var due=weeklyDue()||{week:Math.floor(countedCount()/7)};
+    data.weekly.push({date:new Date().toISOString(),week:due.week,sleep:+$("w_sleep").value,irritability:+$("w_irr").value,switchOff:+$("w_sw").value,stress:+$("w_st").value,note:$("w_note").value.trim()});
+    save();view=null;render();window.scrollTo(0,0);};
+  $("wLater").onclick=function(){weeklyLater=true;view=null;render();};
+}
+/* day 28 review */
+var MEAS=[["sleep","Sleep quality",1],["irritability","Irritability",-1],["switchOff","Ability to switch off after work",1],["stress","Overall stress",-1]];
+function reviewHTML(){
+  var b=data.baseline||{},w4=data.weekly.filter(function(w){return w.week===4;}).slice(-1)[0]||{};
+  var h='<h1>Four weeks done.</h1><div class="card"><table class="rv"><tr><th></th><th>Day 0</th><th>Week 4</th><th>Change</th></tr>';
+  var lines='';
+  MEAS.forEach(function(m){var a=b[m[0]],c=w4[m[0]];var d=(a!=null&&c!=null)?c-a:null;
+    h+='<tr><td>'+esc(m[1])+'</td><td>'+(a!=null?a:'–')+'</td><td>'+(c!=null?c:'–')+'</td><td>'+(d==null?'–':(d>0?'+'+d:d))+'</td></tr>';
+    if(d!=null){var dir=d===0?'no change':(d<0?'down '+(-d):'up '+d);var q=d===0?'':((d*m[2])>0?' — better ('+(m[2]>0?'higher':'lower')+' is better)':' — worse ('+(m[2]>0?'higher':'lower')+' is better)');
+      lines+='<p>'+esc(m[1]+': '+a+' → '+c+', '+dir+q)+'</p>';}
+  });
+  h+='</table>'+lines+'</div>';
+  var comp=data.sessions.filter(function(s){return s.completed;}),full=comp.filter(function(s){return s.type==="full";}).length;
+  var drill=data.sighs.filter(function(x){return x.scheduled;}).length,od=data.sighs.length-drill;
+  h+='<div class="card"><p>You completed '+comp.length+' sessions ('+full+' full, '+(comp.length-full)+' short), the midday drill '+drill+' times, and used the sigh tool on demand '+od+' times.</p></div>';
+  h+='<p>Let your own numbers decide how to continue.</p>'+modeButtons()+'<button class="btn sec" id="rvLater">Later</button>';
+  return h;
+}
+function modeButtons(){var m=data.meta.maintenanceMode;return [["daily","Daily","keep the morning practice every day."],["3-4","3–4 times a week",""],["sighing","Sighing only","the morning card is replaced by the sigh drill; full and short sessions stay available."]].map(function(o){
+  return '<button class="btn'+(m===o[0]?'':' sec')+' mode" data-mode="'+o[0]+'" style="text-align:left"><strong>'+esc(o[1])+'</strong>'+(o[2]?'<br><span style="font-weight:400;font-size:16px">'+esc(o[2])+'</span>':'')+'</button>';}).join("");}
+function bindModes(after){document.querySelectorAll(".mode").forEach(function(b){b.onclick=function(){data.meta.maintenanceMode=b.dataset.mode;data.meta.review28Done=true;save();after();};});}
+function bindReview(){$("rvLater").onclick=function(){reviewLater=true;view=null;render();};bindModes(function(){view=null;tab="practice";render();window.scrollTo(0,0);});}
+/* early-warning signal */
+function signalHTML(){
+  var cur=data.meta.signal||[],other=cur.filter(function(x){return SIGNALS.indexOf(x)<0;})[0];
+  var h='<h1>Your early-warning signal</h1><p>Stress usually shows up in the body before you notice it in your mind. What do you notice first? Pick one or two.</p><div class="chips">';
+  SIGNALS.concat(["Other"]).forEach(function(x){var on=x==="Other"?!!other:cur.indexOf(x)>=0;h+='<button class="chip sig'+(on?' on':'')+'" data-s="'+esc(x)+'">'+esc(x)+'</button>';});
+  h+='</div><input type="text" id="sigOther" placeholder="Other" value="'+esc(other&&other!=="Other"?other:"")+'" style="display:'+(other?'block':'none')+'">';
+  h+='<button class="btn" id="sigSave">Save</button><button class="btn sec" id="sigLater">Later</button>';
+  return h;
+}
+function bindSignal(){
+  document.querySelectorAll(".sig").forEach(function(b){b.onclick=function(){
+    var on=document.querySelectorAll(".sig.on").length;
+    if(!b.classList.contains("on")&&on>=2)return;
+    b.classList.toggle("on");if(b.dataset.s==="Other")$("sigOther").style.display=b.classList.contains("on")?"block":"none";};});
+  function done(){ensureSeen();data.meta.seen.w3=true;save();view=null;tab=signalFromSettings?"practice":"practice";if(signalFromSettings){signalFromSettings=false;view="settings";}render();window.scrollTo(0,0);}
+  $("sigSave").onclick=function(){
+    var v=[];document.querySelectorAll(".sig.on").forEach(function(b){if(b.dataset.s==="Other"){var t=$("sigOther").value.trim();v.push(t||"Other");}else v.push(b.dataset.s);});
+    data.meta.signal=v;done();};
+  $("sigLater").onclick=done;
+}
+var signalFromSettings=false;
+/* midday + evening cards */
+function middayCardHTML(){
+  var done=todayHas(data.sighs,function(x){return x.scheduled;});
+  var h='<div class="card"><h3>'+(done?'✓ ':'')+'Midday sigh drill · 2 min</h3><p>Practise it when you\'re calm, so it\'s there when you\'re not.</p>';
+  if(!data.settings.middayTime)h+='<p class="dim">Pick a time for your midday drill.</p><input type="time" id="midTime" value="12:30">';
+  h+='<button class="btn" id="goDrill">'+(done?'Do it again':'Start')+'</button></div>';
+  return h;
+}
+function eveningCardHTML(){
+  if(todayHas(data.evenings)||eveningSkipped===dayKey())return "";
+  var now=new Date(),hm=pad(now.getHours())+":"+pad(now.getMinutes());
+  var at=data.settings.eveningTime||"18:00";if(hm<at)return "";
+  var sig=(data.meta.signal&&data.meta.signal.length)?data.meta.signal.join(", "):"your signal";
+  function grp(id,opts){return '<div class="chips" data-g="'+id+'">'+opts.map(function(o){return '<button class="chip ev" data-v="'+esc(o)+'">'+esc(o)+'</button>';}).join("")+'</div>';}
+  return '<div class="card" id="evCard"><h3>Evening check-in</h3><p>What was the most stressful moment today?</p><input type="text" id="evMoment" placeholder="Optional">'+
+    '<p>Did you use the breath?</p>'+grp("usedBreath",["Yes","No","Forgot"])+
+    '<p>When did you notice the stress building?</p>'+grp("noticedWhen",["Early","Midway","Too late"])+
+    '<p>Did you notice your signal ('+esc(sig)+')?</p>'+grp("signalNoticed",["Yes","No","Didn't come up"])+
+    '<div class="row"><button class="btn sec" id="evSkip">Skip</button><button class="btn" id="evSave">Save</button></div></div>';
+}
+function bindPhase2Home(){
+  ensureSeen();
+  var mo=$("maintOk");if(mo)mo.onclick=function(){data.meta.seen.maint=true;save();render();};
+  var ms_=$("mTimeSave");if(ms_)ms_.onclick=function(){data.settings.morningTime=$("mTime").value||null;data.meta.seen.w2=true;data.settings.bodyScan=true;save();askNotify();render();};
+  var gs=$("goSigh");if(gs)gs.onclick=function(){startSigh(false,null);};
+  var gd=$("goDrill");if(gd)gd.onclick=function(){var mt=$("midTime");if(mt&&mt.value){data.settings.middayTime=mt.value;save();askNotify();}startSigh(true,2);};
+  document.querySelectorAll("#evCard .chips").forEach(function(g){g.querySelectorAll(".ev").forEach(function(b){b.onclick=function(){var was=b.classList.contains("on");g.querySelectorAll(".ev").forEach(function(x){x.classList.remove("on");});if(!was)b.classList.add("on");};});});
+  var es=$("evSave");if(es)es.onclick=function(){
+    function v(id){var b=document.querySelector('#evCard [data-g="'+id+'"] .on');return b?b.dataset.v:null;}
+    data.evenings.push({date:new Date().toISOString(),moment:$("evMoment").value.trim(),usedBreath:v("usedBreath"),noticedWhen:v("noticedWhen"),signalNoticed:v("signalNoticed")});save();render();};
+  var ek=$("evSkip");if(ek)ek.onclick=function(){eveningSkipped=dayKey();render();};
+}
+/* sigh tool */
+function startSigh(scheduled,mins){
+  ac();S={sigh:true,scheduled:scheduled,minutes:mins||2,before:5,after:null,trigger:"",running:false};
+  var h='<h2>Sigh — calm in a minute</h2><p class="dim">Safe to use anywhere — sitting, standing, at your desk. Use this during the day, not the 30-breath method.</p>';
+  h+='<h3>Minutes</h3><div class="chips">'+[1,2,3,5].map(function(m){return '<button class="chip dur'+(m===S.minutes?' on':'')+'" data-m="'+m+'">'+m+' min</button>';}).join("")+'</div>';
+  h+=sliderHTML("sgBefore","Before","1 = calm","10 = very stressed",5);
+  if(!scheduled)h+='<h3>What set it off?</h3><div class="chips">'+SIGH_TAGS.map(function(t){return '<button class="chip trg" data-t="'+t+'">'+t+'</button>';}).join("")+'</div>';
+  h+='<button class="btn" id="sgGo">Start</button><button class="btn sec" id="sgCancel">Cancel</button>';
+  sessShow(h);bindSlider("sgBefore");
+  document.querySelectorAll(".dur").forEach(function(b){b.onclick=function(){document.querySelectorAll(".dur").forEach(function(x){x.classList.remove("on");});b.classList.add("on");S.minutes=+b.dataset.m;};});
+  document.querySelectorAll(".trg").forEach(function(b){b.onclick=function(){var was=b.classList.contains("on");document.querySelectorAll(".trg").forEach(function(x){x.classList.remove("on");});if(!was)b.classList.add("on");};});
+  $("sgCancel").onclick=function(){S=null;sessHide();};
+  $("sgGo").onclick=function(){var t=document.querySelector(".trg.on");S.trigger=t?t.dataset.t:"";S.before=+$("sgBefore").value;runSigh();};
+}
+function runSigh(){
+  S.running=true;lockOn();$("stopBtn").style.display="block";
+  sessShow('<p class="cue" style="margin-top:40px">Safe to use anywhere — sitting, standing, at your desk. Use this during the day, not the 30-breath method.</p><div class="circleWrap"><div class="circle" id="circ"></div></div><p class="cue" id="sgCue"></p><div class="big" id="sgLeft" style="font-size:28px"></div>',true);
+  var c=$("circ"),end=performance.now()+S.minutes*60000/speed(),first=true;
+  function left(){var r=Math.max(0,(end-performance.now())*speed()/1000);$("sgLeft").textContent=fmtSec(Math.ceil(r));}
+  function cycle(){
+    if(!S||!S.running)return;
+    if(performance.now()>=end){sighAfter();return;}
+    left();if(first&&data.settings.voiceCues)say("In… and a little more… now slowly out.");first=false;
+    $("sgCue").textContent="In through the nose";c.style.transitionDuration=(2/speed())+"s";c.style.transform="scale(1.9)";
+    if(data.settings.breathTones)tone(220,300,1.9/speed(),0.06);
+    T(function(){$("sgCue").textContent="A little more";c.style.transitionDuration=(1/speed())+"s";c.style.transform="scale(2.3)";if(data.settings.breathTones)tone(300,360,0.9/speed(),0.06);
+      T(function(){$("sgCue").textContent="Slowly out through the mouth";c.style.transitionDuration=(6/speed())+"s";c.style.transform="scale(1)";if(data.settings.breathTones)tone(360,180,5.8/speed(),0.05);
+        T(function(){left();cycle();},6000);},1000);},2000);
+  }
+  T(cycle,500);
+}
+function sighStop(){clearT();try{speechSynthesis.cancel();}catch(e){}sighAfter();}
+function sighAfter(){
+  if(!S)return;clearT();S.running=false;lockOff();$("stopBtn").style.display="none";
+  sessShow('<h2>After</h2>'+sliderHTML("sgAfter","After","1 = calm","10 = very stressed",5)+'<button class="btn" id="sgSave">Save</button>');
+  bindSlider("sgAfter");
+  $("sgSave").onclick=function(){
+    data.sighs.push({id:uid(),date:new Date().toISOString(),minutes:S.minutes,before:S.before,after:+$("sgAfter").value,trigger:S.scheduled?"":S.trigger,scheduled:!!S.scheduled});
+    save();S=null;sessHide();view=null;tab="practice";render();};
+}
+/* body scan */
+function bodyScan(){
+  if(!S||!S.running)return;S.bodyScanDone=true;say(BODY_SCAN);
+  var left=60;sessShow('<p class="cue" style="margin-top:60px">'+esc(BODY_SCAN)+'</p><div class="big" id="bs">60</div>',true);
+  function step(){if(!S||!S.running)return;left--;if($("bs"))$("bs").textContent=left;if(left>0)T(step,1000);else afterStep();}
+  T(step,1000);
+}
+/* reminders */
+var notifPerm=function(){try{return ("Notification" in window)?Notification.permission:"unsupported";}catch(e){return "unsupported";}};
+function askNotify(){try{if("Notification" in window&&Notification.permission==="default")Notification.requestPermission().then(function(){if(view==="settings")render();});}catch(e){}}
+function dueReminders(){
+  var now=new Date(),hm=pad(now.getHours())+":"+pad(now.getMinutes()),n=countedCount(),out=[],st=data.settings;
+  if(st.morningTime&&hm>=st.morningTime&&!todayHas(data.sessions,function(s){return s.completed;})&&!(n>=28&&data.meta.maintenanceMode==="sighing"))out.push(["morning","Time for your morning breathing practice."]);
+  if(n>=14&&st.middayTime&&hm>=st.middayTime&&!todayHas(data.sighs,function(x){return x.scheduled;}))out.push(["midday","Time for your midday sigh drill."]);
+  if(n>=21&&st.eveningTime&&hm>=st.eveningTime&&!todayHas(data.evenings))out.push(["evening","Time for your evening check-in."]);
+  return out;
+}
+function reminderBanners(){if(notifPerm()==="granted")return "";return dueReminders().map(function(r){return '<div class="card banner">'+esc(r[1])+'</div>';}).join("");}
+var fired={};
+function checkReminders(){
+  if(notifPerm()!=="granted")return;
+  dueReminders().forEach(function(r){var k=dayKey()+r[0];if(fired[k]||lsGet("breathe_fired_"+k))return;fired[k]=1;lsSet("breathe_fired_"+k,"1");try{new Notification("Breathe",{body:r[1]});}catch(e){}});
+}
+/* settings additions */
+function settings2HTML(){
+  var s=data.settings,n=countedCount(),h='';
+  if(n>=7)h+='<div class="toggle"><span>Extra round (4 rounds in full sessions)</span>'+swHTML("sExtra",s.extraRound)+'</div>';
+  if(n>=14)h+='<div class="toggle"><span>Body scan after the last round</span>'+swHTML("sScan",s.bodyScan)+'</div>';
+  if(n>=14)h+='<div class="toggle"><span>Early-warning signal<br><span class="dim" style="font-size:15px">'+esc((data.meta.signal||[]).join(", ")||"Not set")+'</span></span><button class="btn sec" style="width:auto;margin:0" id="sigEdit">Edit</button></div>';
+  h+='</div><div class="card"><h3>Reminders</h3>';
+  h+='<p>Morning</p><input type="time" id="tM" value="'+esc(s.morningTime||"")+'">';
+  h+='<p>Midday</p><input type="time" id="tD" value="'+esc(s.middayTime||"")+'">';
+  h+='<p>Evening</p><input type="time" id="tE" value="'+esc(s.eveningTime||"")+'">';
+  var p=notifPerm();
+  if(p==="default")h+='<button class="btn sec" id="notifOn">Allow notifications</button>';
+  if(p!=="granted")h+='<p class="dim">Browser reminders are unreliable on phones. Set a phone alarm as backup.</p>';
+  if(data.meta.review28Done)h+='</div><div class="card"><h3>How to continue</h3>'+modeButtons();
+  return h;
+}
+function bindSettings2(){
+  var s=data.settings;
+  var e=$("sExtra");if(e)e.onclick=function(){s.extraRound=!s.extraRound;save();render();};
+  var b=$("sScan");if(b)b.onclick=function(){s.bodyScan=!s.bodyScan;save();render();};
+  var g=$("sigEdit");if(g)g.onclick=function(){signalFromSettings=true;view="signal";render();window.scrollTo(0,0);};
+  [["tM","morningTime"],["tD","middayTime"],["tE","eveningTime"]].forEach(function(x){$(x[0]).onchange=function(){s[x[1]]=$(x[0]).value||null;save();askNotify();};});
+  var nb=$("notifOn");if(nb)nb.onclick=askNotify;
+  bindModes(function(){render();});
+}
+
+/* ============ PHASE 3: PROGRESS ============ */
+var COLORS={sleep:"#7fd6ff",irritability:"#ff9f7f",switchOff:"#b7f27f",stress:"#f5d76e",before:"#e7a35d",after:"#5fd3bf",full:"#5fd3bf",short:"#2b8c7e",drill:"#b39ddb",od:"#f5d76e",early:"#5fd3bf",midway:"#f5d76e",late:"#ff8a7a",sig:"#7fd6ff"};
+function progDayAt(date){var t=new Date(date).getTime();return data.sessions.filter(function(s){return s.counted&&new Date(s.date).getTime()<=t;}).length;}
+function weekAt(date){return weekOf(Math.max(1,progDayAt(date)));}
+function curWeek(){return weekOf(Math.max(1,countedCount()));}
+function emptyMsg(w){return '<p class="dim">Not enough data yet — this fills in from week '+w+'.</p>';}
+function chartBox(id,title,caption,legend){
+  return '<div class="card chart"><h3>'+esc(title)+'</h3><canvas id="'+id+'" class="cv" style="width:100%;height:220px;display:block"></canvas>'+
+   (legend?'<div class="legend">'+legend.map(function(l){return '<span><i style="background:'+l[1]+(l[2]?';border-top:2px dashed '+l[1]+';background:none;height:0':'')+'"></i>'+esc(l[0])+'</span>';}).join("")+'</div>':'')+
+   (caption?'<p class="dim cap">'+esc(caption)+'</p>':'')+'</div>';
+}
+function setupCanvas(id){
+  var c=$(id);if(!c)return null;var dpr=window.devicePixelRatio||1,w=c.clientWidth||320,h=c.clientHeight||220;
+  c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);var x=c.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);
+  x.font="13px -apple-system,Segoe UI,Roboto,sans-serif";
+  return {x:x,w:w,h:h,L:42,R:8,T:10,B:34};
+}
+function axes(g,labels,yMax,yLabel,xLabel,ySteps){
+  var x=g.x,pw=g.w-g.L-g.R,ph=g.h-g.T-g.B;ySteps=ySteps||5;
+  x.strokeStyle="#2b5f5b";x.fillStyle="#9cc5bf";x.lineWidth=1;x.textAlign="right";x.textBaseline="middle";
+  for(var i=0;i<=ySteps;i++){var v=yMax*i/ySteps,y=g.T+ph-ph*i/ySteps;x.beginPath();x.moveTo(g.L,y);x.lineTo(g.L+pw,y);x.stroke();x.fillText(String(Math.round(v*10)/10),g.L-4,y);}
+  x.textAlign="center";x.textBaseline="top";var n=labels.length,stepL=Math.ceil(n/8);
+  labels.forEach(function(l,i){if(i%stepL===0||i===n-1&&n<=8)x.fillText(l,g.L+pw*(i+0.5)/n,g.T+ph+3);});
+  if(xLabel)x.fillText(xLabel,g.L+pw/2,g.h-15);
+  if(yLabel){x.save();x.translate(8,g.T+ph/2);x.rotate(-Math.PI/2);x.textBaseline="middle";x.fillText(yLabel,0,0);x.restore();}
+  return {pw:pw,ph:ph};
+}
+function progressHTML(){
+  var h='<h2>Progress</h2>',cw=curWeek(),n=countedCount();
+  h+=data.weekly.length?chartBox("ch1","Your four numbers","This is the real test — whether your everyday baseline is changing, not just how you feel after a session.",[["Sleep",COLORS.sleep],["Irritability",COLORS.irritability],["Switch off",COLORS.switchOff],["Stress",COLORS.stress]]):'<div class="card"><h3>Your four numbers</h3>'+emptyMsg(1)+'</div>';
+  var hasBA=data.sessions.some(function(s){return s.completed&&s.before!=null&&s.after!=null;});
+  h+=hasBA?chartBox("ch2","Morning sessions","The gap shows the session's immediate effect. A falling 'before' bar over the weeks is the bigger sign.",[["Before",COLORS.before],["After",COLORS.after]]):'<div class="card"><h3>Morning sessions</h3>'+emptyMsg(1)+'</div>';
+  h+=n?chartBox("ch3","Consistency","Showing up matters more than the length of the session.",[["Full",COLORS.full],["Short",COLORS.short],["Midday drill",COLORS.drill],["On-demand sigh",COLORS.od]]):'<div class="card"><h3>Consistency</h3>'+emptyMsg(1)+'</div>';
+  var od=data.sighs.filter(function(s){return !s.scheduled;});
+  if(od.length){
+    var ba=od.filter(function(s){return s.before!=null&&s.after!=null;}),avg=function(k){return ba.length?(ba.reduce(function(a,s){return a+(+s[k]);},0)/ba.length).toFixed(1):"–";};
+    h+='<div class="card chart"><h3>Sighing</h3><p class="dim cap">On-demand uses per week</p><canvas id="ch4" class="cv" style="width:100%;height:200px;display:block"></canvas><p class="dim cap">Average before → after</p><p>'+avg("before")+' → '+avg("after")+'</p><p class="dim cap">Triggers</p><canvas id="ch4b" class="cv" style="width:100%;height:'+(30+28*SIGH_TAGS.length)+'px;display:block"></canvas></div>';
+  } else h+='<div class="card"><h3>Sighing</h3>'+emptyMsg(3)+'</div>';
+  h+=data.evenings.length?chartBox("ch5","Noticing","The goal is moving from 'too late' to 'early'.",[["Early",COLORS.early],["Midway",COLORS.midway],["Too late",COLORS.late],["Signal noticed",COLORS.sig,1]]):'<div class="card"><h3>Noticing</h3>'+emptyMsg(4)+'</div>';
+  if(data.settings.showHolds){
+    var hs=data.sessions.filter(function(s){return s.holds&&s.holds.length;});
+    h+=hs.length?chartBox("ch6","Hold times","For interest only — not a goal."):'<div class="card"><h3>Hold times</h3>'+emptyMsg(1)+'<p class="dim">For interest only — not a goal.</p></div>';
+  }
+  h+='<button class="btn sec" id="viewReport">View report</button>';
+  return h;
+}
+function weeksRange(){var m=Math.max(1,curWeek());data.weekly.forEach(function(w){if(w.week>m)m=w.week;});var a=[];for(var i=1;i<=m;i++)a.push(i);return a;}
+function drawCharts(){
+  try{
+  var g,a,W;
+  if((g=setupCanvas("ch1"))){
+    var ws=data.weekly.slice().sort(function(p,q){return p.week-q.week;}),labs=ws.map(function(w){return "W"+w.week;});
+    a=axes(g,labs,10,"score","week",5);var b=data.baseline||{};
+    ["sleep","irritability","switchOff","stress"].forEach(function(k){
+      g.x.strokeStyle=COLORS[k];
+      if(b[k]!=null){g.x.setLineDash([5,4]);g.x.lineWidth=1.5;var y=g.T+a.ph-a.ph*b[k]/10;g.x.beginPath();g.x.moveTo(g.L,y);g.x.lineTo(g.L+a.pw,y);g.x.stroke();g.x.setLineDash([]);}
+      g.x.lineWidth=2.5;g.x.beginPath();ws.forEach(function(w,i){var px=g.L+a.pw*(i+0.5)/ws.length,py=g.T+a.ph-a.ph*(w[k]||0)/10;if(i)g.x.lineTo(px,py);else g.x.moveTo(px,py);});g.x.stroke();
+      g.x.fillStyle=COLORS[k];ws.forEach(function(w,i){var px=g.L+a.pw*(i+0.5)/ws.length,py=g.T+a.ph-a.ph*(w[k]||0)/10;g.x.beginPath();g.x.arc(px,py,3,0,7);g.x.fill();});
+    });
+  }
+  if((g=setupCanvas("ch2"))){
+    W=weeksRange();var bw=W.map(function(w){var ss=data.sessions.filter(function(s){return s.completed&&s.before!=null&&s.after!=null&&weekOf(Math.max(1,s.programmeDay||1))===w;});
+      return ss.length?[ss.reduce(function(t,s){return t+s.before;},0)/ss.length,ss.reduce(function(t,s){return t+s.after;},0)/ss.length]:null;});
+    a=axes(g,W.map(function(w){return "W"+w;}),10,"avg","week",5);
+    bw.forEach(function(v,i){if(!v)return;var cx=g.L+a.pw*(i+0.5)/W.length,bwid=Math.min(22,a.pw/W.length/2.6);
+      [[v[0],COLORS.before,-1],[v[1],COLORS.after,0]].forEach(function(p){g.x.fillStyle=p[1];var hh=a.ph*p[0]/10;g.x.fillRect(cx+p[2]*bwid,g.T+a.ph-hh,bwid-1,hh);});});
+  }
+  if((g=setupCanvas("ch3"))){
+    W=weeksRange();var rows=W.map(function(w){
+      var cs=data.sessions.filter(function(s){return s.counted&&weekOf(Math.max(1,s.programmeDay))===w;});
+      var sg=data.sighs.filter(function(s){return weekAt(s.date)===w;});
+      return [cs.filter(function(s){return s.type==="full";}).length,cs.filter(function(s){return s.type==="short";}).length,sg.filter(function(s){return s.scheduled;}).length,sg.filter(function(s){return !s.scheduled;}).length];});
+    var mx=Math.max(7,Math.max.apply(null,rows.map(function(r){return Math.max(r[0]+r[1],r[2],r[3]);})));
+    a=axes(g,W.map(function(w){return "W"+w;}),mx,"count","week",Math.min(7,mx));
+    rows.forEach(function(r,i){var cx=g.L+a.pw*(i+0.5)/W.length,bwid=Math.min(16,a.pw/W.length/3.4),y0=g.T+a.ph;
+      function bar(xo,v,base,col){var hh=a.ph*v/mx;g.x.fillStyle=col;g.x.fillRect(cx+xo,base-hh,bwid-1,hh);return base-hh;}
+      var top=bar(-1.5*bwid,r[0],y0,COLORS.full);bar(-1.5*bwid,r[1],top,COLORS.short);bar(-0.5*bwid,r[2],y0,COLORS.drill);bar(0.5*bwid,r[3],y0,COLORS.od);});
+  }
+  if((g=setupCanvas("ch4"))){
+    W=weeksRange();var c4=W.map(function(w){return data.sighs.filter(function(s){return !s.scheduled&&weekAt(s.date)===w;}).length;});
+    var m4=Math.max(4,Math.max.apply(null,c4));a=axes(g,W.map(function(w){return "W"+w;}),m4,"uses","week",Math.min(m4,5));
+    c4.forEach(function(v,i){var bwid=Math.min(26,a.pw/W.length*0.6),cx=g.L+a.pw*(i+0.5)/W.length,hh=a.ph*v/m4;g.x.fillStyle=COLORS.od;g.x.fillRect(cx-bwid/2,g.T+a.ph-hh,bwid,hh);});
+  }
+  if((g=setupCanvas("ch4b"))){
+    var cnt=SIGH_TAGS.map(function(t){return data.sighs.filter(function(s){return !s.scheduled&&s.trigger===t;}).length;}),m=Math.max(1,Math.max.apply(null,cnt)),lw=72;
+    g.x.textBaseline="middle";SIGH_TAGS.forEach(function(t,i){var y=8+i*28;g.x.fillStyle="#9cc5bf";g.x.textAlign="left";g.x.fillText(t,0,y+10);
+      var bl=(g.w-lw-30)*cnt[i]/m;g.x.fillStyle=COLORS.od;g.x.fillRect(lw,y,Math.max(bl,1),20);g.x.fillStyle="#e6f4f1";g.x.fillText(String(cnt[i]),lw+bl+6,y+10);});
+  }
+  if((g=setupCanvas("ch5"))){
+    var ew={};data.evenings.forEach(function(e){var w=weekAt(e.date);(ew[w]=ew[w]||[]).push(e);});
+    var ks=Object.keys(ew).map(Number).sort(function(p,q){return p-q;});
+    a=axes(g,ks.map(function(w){return "W"+w;}),100,"%","week",4);
+    [["Early","early"],["Midway","midway"],["Too late","late"],["sig","sig"]].forEach(function(p){
+      var pts=ks.map(function(w){var L=ew[w];return 100*L.filter(function(e){return p[0]==="sig"?e.signalNoticed==="Yes":e.noticedWhen===p[0];}).length/L.length;});
+      g.x.strokeStyle=COLORS[p[1]];g.x.fillStyle=COLORS[p[1]];g.x.lineWidth=2.5;g.x.setLineDash(p[0]==="sig"?[5,4]:[]);g.x.beginPath();
+      pts.forEach(function(v,i){var px=g.L+a.pw*(i+0.5)/ks.length,py=g.T+a.ph-a.ph*v/100;if(i)g.x.lineTo(px,py);else g.x.moveTo(px,py);});g.x.stroke();g.x.setLineDash([]);
+      pts.forEach(function(v,i){var px=g.L+a.pw*(i+0.5)/ks.length,py=g.T+a.ph-a.ph*v/100;g.x.beginPath();g.x.arc(px,py,3.5,0,7);g.x.fill();});
+    });
+  }
+  if((g=setupCanvas("ch6"))){
+    var hs=data.sessions.filter(function(s){return s.holds&&s.holds.length;}).sort(function(p,q){return new Date(p.date)-new Date(q.date);});
+    var av=hs.map(function(s){return s.holds.reduce(function(t,v){return t+v;},0)/s.holds.length;}),m6=Math.max(60,Math.ceil(Math.max.apply(null,av)/30)*30);
+    a=axes(g,hs.map(function(s){return String(s.programmeDay);}),m6,"sec","session (day)",Math.min(6,m6/30));
+    g.x.strokeStyle=COLORS.after;g.x.lineWidth=2;g.x.beginPath();av.forEach(function(v,i){var px=g.L+a.pw*(i+0.5)/av.length,py=g.T+a.ph-a.ph*v/m6;if(i)g.x.lineTo(px,py);else g.x.moveTo(px,py);});g.x.stroke();
+  }
+  }catch(e){if(window.console)console.error(e);}
+}
+/* report */
+function reportData(){
+  var b=data.baseline||{},ws=data.weekly.slice().sort(function(p,q){return p.week-q.week;}),lw=ws[ws.length-1];
+  var lines=[];
+  if(lw&&b.date)MEAS.forEach(function(m){var x=b[m[0]],y=lw[m[0]];if(x==null||y==null)return;var d=y-x;
+    var nm={sleep:"sleep quality",irritability:"irritability",switchOff:"ability to switch off after work",stress:"overall stress"}[m[0]];
+    var l=d===0?"Your "+nm+" stayed at "+x+".":"Your "+nm+(d<0?" dropped":" rose")+" from "+x+" to "+y+".";
+    if(d!==0&&(d*m[2])<0)l+=" That is worse than Day 0.";
+    lines.push(l);});
+  var comp=data.sessions.filter(function(s){return s.completed;}),full=comp.filter(function(s){return s.type==="full";}).length;
+  var drills=data.sighs.filter(function(s){return s.scheduled;}).length,od=data.sighs.length-drills;
+  function top(arr){var c={};arr.forEach(function(v){if(v)c[v]=(c[v]||0)+1;});return Object.keys(c).sort(function(p,q){return c[q]-c[p];}).slice(0,3).map(function(k){return k+" ("+c[k]+")";});}
+  var moods=top([].concat.apply([],data.sessions.map(function(s){return s.mood||[];}))),trig=top(data.sighs.filter(function(s){return !s.scheduled;}).map(function(s){return s.trigger;}));
+  return {lw:lw,lines:lines,comp:comp.length,full:full,short:comp.length-full,counted:countedCount(),drills:drills,od:od,ev:data.evenings.length,moods:moods,trig:trig};
+}
+function reportText(){
+  var r=reportData(),t=["Breathe — report ("+dayKey()+")",""];
+  t.push(r.lw?"Day 0 vs week "+r.lw.week+" check-in:":"No weekly check-in yet.");r.lines.forEach(function(l){t.push("- "+l);});
+  t.push("","Sessions completed: "+r.comp+" ("+r.full+" full, "+r.short+" short); counted days: "+r.counted,"Midday drills: "+r.drills,"On-demand sighs: "+r.od,"Evening check-ins: "+r.ev);
+  t.push("","Most frequent moods: "+(r.moods.join(", ")||"none yet"),"Most frequent stress triggers: "+(r.trig.join(", ")||"none yet"));
+  return t.join("\n");
+}
+function reportHTML(){
+  var r=reportData(),h='<div class="hdr"><h1>Report</h1><button class="btn sec" style="width:auto" id="rpBack">Back</button></div>';
+  h+='<div class="card"><h3>'+(r.lw?'Day 0 vs week '+r.lw.week+' check-in':'Day 0 vs latest check-in')+'</h3>'+(r.lines.length?r.lines.map(function(l){return '<p>'+esc(l)+'</p>';}).join(""):emptyMsg(1))+'</div>';
+  h+='<div class="card"><h3>Totals</h3><p>Sessions completed: '+r.comp+' ('+r.full+' full, '+r.short+' short)<br>Counted days: '+r.counted+'<br>Midday drills: '+r.drills+'<br>On-demand sighs: '+r.od+'<br>Evening check-ins: '+r.ev+'</p></div>';
+  h+='<div class="card"><h3>Most frequent moods</h3><p>'+esc(r.moods.join(", ")||"None yet")+'</p><h3>Most frequent stress triggers</h3><p>'+esc(r.trig.join(", ")||"None yet")+'</p></div>';
+  h+='<button class="btn" id="rpCopy">Copy report as text</button><p class="dim" id="rpMsg"></p>';
+  return h;
+}
+function copyText(t,done){
+  function fb(){try{var ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();var ok=document.execCommand("copy");ta.remove();done(ok);}catch(e){done(false);}}
+  try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){done(true);},fb);else fb();}catch(e){fb();}
+}
+function bindReport(){
+  $("rpBack").onclick=function(){view=null;tab="log";render();};
+  $("rpCopy").onclick=function(){copyText(reportText(),function(ok){$("rpMsg").textContent=ok?"Copied.":"Couldn't copy. Select and copy the text below.";if(!ok){var ta=document.createElement("textarea");ta.value=reportText();ta.style.minHeight="260px";$("rpMsg").after(ta);}});};
+}
+var _rsz;window.addEventListener("resize",function(){clearTimeout(_rsz);_rsz=setTimeout(function(){if(tab==="log"&&!view)drawCharts();},200);});
+
+/* ============ INIT ============ */
+if(firstLaunch){view="onboard";obStep=1;}
+render();
+setInterval(checkReminders,30000);checkReminders();
+</script>
+</body>
+</html>
