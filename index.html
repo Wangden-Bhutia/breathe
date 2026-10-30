@@ -44,7 +44,12 @@ nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--bg2);bo
 nav button{flex:1;min-height:60px;background:none;border:0;color:var(--dim);font-size:17px;cursor:pointer}
 nav button.on{color:var(--acc);font-weight:700}
 body.noNav nav{display:none}
-input[type=range]{width:100%;height:44px;accent-color:var(--acc)}
+input[type=range]{width:100%;height:44px;-webkit-appearance:none;appearance:none;background:transparent;margin:6px 0}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:-11px;border-radius:50%;background:var(--acc);border:0}
+input[type=range]::-moz-range-track{height:8px;border-radius:4px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--acc);border:0}
+input[type=range]:focus-visible{outline:2px solid var(--acc);outline-offset:4px}
 .slab{display:flex;justify-content:space-between;font-size:15px;color:var(--dim)}
 .sval{font-size:32px;font-weight:700;text-align:center;color:var(--acc)}
 textarea,input[type=text],input[type=number]{width:100%;background:var(--bg2);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:17px;font-family:inherit}
@@ -97,7 +102,8 @@ body.test #stopBtn{top:44px}
 .modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px}
 .modal.show{display:flex}
 .modal .card{max-width:480px;width:100%;background:var(--bg2)}
-input[type=range].unset{opacity:.45}
+input[type=range].unset::-webkit-slider-thumb{opacity:0}
+input[type=range].unset::-moz-range-thumb{opacity:0}
 .sval.unset{color:var(--dim);font-size:20px;font-weight:400;padding:10px 0}
 .gear svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.8}
 .today{border-color:var(--acc)}
@@ -203,7 +209,7 @@ function say(text){
   if(chimed)chime(text);
   if(!data.settings.voiceCues){if(!chimed)chime(text);return;}
   var delay=chimed?(CHIMES[text]||[0]).length*280+250:0;
-  setTimeout(function(){
+  var vid=setTimeout(function(){
     try{
       if("speechSynthesis" in window && window.SpeechSynthesisUtterance){
         speechSynthesis.cancel();
@@ -212,6 +218,7 @@ function say(text){
       }
     }catch(e){}
   },delay);
+  timers.push(vid);
 }
 
 /* ============ WAKE LOCK ============ */
@@ -236,7 +243,7 @@ var LEARN=[
 ["Cyclic sighing",paras("A slow breathing pattern: two inhales through the nose (one full, one short top-up), then a long exhale through the mouth. The long exhale slows the heart rate and settles the nervous system. In the 2023 Stanford study, five minutes a day of cyclic sighing improved mood slightly more than the other breathing practices tested. It involves no fast breathing and no breath holds, so it is safe to use sitting or standing, at work, or anywhere during the day."),"sighing"],
 ["Your early-warning signal",paras("Stress usually shows up in the body before you notice it in your mind — a clenched jaw, tight shoulders, a held breath. Everyone has a first signal. Learning yours is what lets you use the breath early, when it still works, instead of late, when you're already overwhelmed. A breathing tool you haven't practised won't come to mind under pressure. That is why the sighing is practised daily first, and used on demand second."),"signal"],
 ["What's normal, what's not","<p><strong>Normal:</strong> tingling, light-headedness, warmth or cold, a buzzing feeling, mild stiffness in the hands, emotion coming up.</p><p><strong>Stop and breathe normally if:</strong> you feel faint, have chest pain or palpitations, feel panicky, or your vision goes dark.</p>"+paras("If your hands cramp, you're breathing too hard. Slow down and breathe less forcefully."),"normal"],
-["Tips","<ul>"+["Practise on an empty stomach, within an hour of waking.","Same place, same time each day. Habit is built by repetition, not effort.","On a rushed morning, do the short session. A short session beats a skipped one.","Retention times will vary from day to day. That isn't progress or failure, just information.","Don't compete with your previous hold. That's why hold times are hidden by default.","The weekly snapshot matters more than any single session. It shows whether the change is lasting."].map(function(t){return "<li><p>"+esc(t)+"</p></li>";}).join("")+"</ul>","tips"],
+["Tips","<ul>"+["Practise on an empty stomach, within an hour of waking.","Same place, same time each day. Habit is built by repetition, not effort.","On a rushed morning, do the short session. A short session beats a skipped one.","On days you can't lie down, do a sigh session. It keeps the habit going but doesn't count as a programme day.","Retention times will vary from day to day. That isn't progress or failure, just information.","Don't compete with your previous hold. That's why hold times are hidden by default.","The weekly snapshot matters more than any single session. It shows whether the change is lasting."].map(function(t){return "<li><p>"+esc(t)+"</p></li>";}).join("")+"</ul>","tips"],
 ["Why the reflection matters",paras("The practice stays the same each day. What changes is what you notice. Even one word after each session turns a breathing exercise into self-observation. Over time you can see your own pattern instead of taking anyone's word for it."),"reflection"]
 ];
 
@@ -244,7 +251,10 @@ var LEARN=[
 var tab="practice", view=null, openLearn=null;
 function setTab(t){tab=t;view=null;render();window.scrollTo(0,0);}
 document.querySelectorAll("nav button").forEach(function(b){b.onclick=function(){setTab(b.dataset.tab);};});
+var formDirty=false;
+document.addEventListener("input",function(e){var a=$("app");if(a&&a.contains(e.target))formDirty=true;},true);
 function render(){
+  formDirty=false;
   document.body.classList.toggle("test",testMode);
   document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("on",b.dataset.tab===tab&&!view);});
   var app=$("app");
@@ -306,8 +316,8 @@ function practiceHTML(){
   var mm=data.meta.maintenanceMode, sighOnly=n>=28&&mm==="sighing", done=countedToday(), subToday=subSighToday();
   /* ---- TODAY: the reason the app is opened, always first ---- */
   h+='<div class="card today">';
-  var last=lastSessionDate();
-  if(!done&&last&&daysBetween(last,new Date())>=3) h+='<p>Welcome back. Pick up where you left off.</p>';
+  var last=lastSessionDate();data.sighs.forEach(function(x){if(x.sub&&(!last||new Date(x.date)>new Date(last)))last=x.date;});
+  if(!done&&!subToday&&last&&daysBetween(last,new Date())>=3) h+='<p>Welcome back. Pick up where you left off.</p>';
   if(n<3||(n===3&&done)){
     var names=["Breathe & Reset","Breathe & Repeat","Breathe & Continue"];
     h+='<h2>3-Day Challenge</h2>';
@@ -572,7 +582,7 @@ function cancelSess(){clearT();try{speechSynthesis.cancel();}catch(e){}if(S&&S.r
 window.addEventListener("popstate",function(){
   if(ignorePop){ignorePop=false;return;}
   if(!S){sessHide();return;}
-  if(S.sigh){if(S.running){sighStop();pushSess();}else cancelSess();return;}
+  if(S.sigh){if(S.running){sighStop();pushSess();}else if(S.afterShown){pushSess();}else cancelSess();return;}
   if(S.running){stopSession();return;}
   if(S.breathDone){pushSess();return;} /* After/Reflection: keep the finished session, ignore Back */
   cancelSess();
@@ -758,8 +768,8 @@ function reviewHTML(){
   });
   h+='</table>'+lines+'</div>';
   var comp=data.sessions.filter(function(s){return s.completed;}),full=comp.filter(function(s){return s.type==="full";}).length;
-  var drill=data.sighs.filter(function(x){return x.scheduled;}).length,od=data.sighs.length-drill;
-  h+='<div class="card"><p>You completed '+comp.length+' sessions ('+full+' full, '+(comp.length-full)+' short), the midday drill '+drill+' times, and used the sigh tool on demand '+od+' times.</p></div>';
+  var drill=data.sighs.filter(function(x){return x.scheduled&&!x.sub;}).length,subs=data.sighs.filter(function(x){return x.sub;}).length,od=data.sighs.filter(function(x){return !x.scheduled;}).length;
+  h+='<div class="card"><p>You completed '+comp.length+' sessions ('+full+' full, '+(comp.length-full)+' short), the midday drill '+drill+' times, and used the sigh tool on demand '+od+' times.'+(subs?' You also did '+subs+' sigh day'+(subs>1?'s':'')+' when you couldn\'t lie down.':'')+'</p></div>';
   h+='<p>Let your own numbers decide how to continue.</p>'+modeButtons()+'<button class="btn sec" id="rvLater">Later</button>';
   return h;
 }
@@ -855,7 +865,7 @@ function runSigh(){
 }
 function sighStop(){clearT();try{speechSynthesis.cancel();}catch(e){}sighAfter();}
 function sighAfter(){
-  if(!S)return;clearT();if(S.running)S.done=Math.max(0.1,Math.round((performance.now()-S.t0)*speed()/6000)/10);S.running=false;lockOff();$("stopBtn").style.display="none";
+  if(!S)return;clearT();if(S.running)S.done=Math.max(0.1,Math.round((performance.now()-S.t0)*speed()/6000)/10);S.running=false;S.afterShown=true;lockOff();$("stopBtn").style.display="none";
   sessShow('<h2>After</h2>'+sliderHTML("sgAfter","After","1 = calm","10 = very stressed",5)+'<button class="btn" id="sgSave">Save</button>');
   requireSliders(["sgAfter"],"sgSave");
   $("sgSave").onclick=function(){
@@ -874,10 +884,9 @@ function dueReminders(){
   var now=new Date(),hm=pad(now.getHours())+":"+pad(now.getMinutes()),n=countedCount(),out=[],st=data.settings;
   if(st.morningTime&&hm>=st.morningTime&&!todayHas(data.sessions,function(s){return s.completed;})&&!subSighToday()&&!(n>=28&&data.meta.maintenanceMode==="sighing"))out.push(["morning","Time for your morning breathing practice."]);
   if(n>=14&&st.middayTime&&hm>=st.middayTime&&!todayHas(data.sighs,function(x){return x.scheduled&&!x.sub;}))out.push(["midday","Time for your midday sigh drill."]);
-  if(n>=21&&st.eveningTime&&hm>=st.eveningTime&&!todayHas(data.evenings))out.push(["evening","Time for your evening check-in."]);
   return out;
 }
-function reminderBanners(){return dueReminders().map(function(r){return '<div class="card banner">'+esc(r[1])+'</div>';}).join("");}
+function reminderBanners(){lastBannerKey=bannerKey();return dueReminders().map(function(r){return '<div class="card banner">'+esc(r[1])+'</div>';}).join("");}
 /* settings additions */
 function settings2HTML(){
   var s=data.settings,n=countedCount(),h='';
@@ -981,7 +990,7 @@ function drawCharts(){
     W=weeksRange();var rows=W.map(function(w){
       var cs=data.sessions.filter(function(s){return s.counted&&weekOf(Math.max(1,s.programmeDay))===w;});
       var sg=data.sighs.filter(function(s){return weekAt(s.date)===w;});
-      return [cs.filter(function(s){return s.type==="full";}).length,cs.filter(function(s){return s.type==="short";}).length,sg.filter(function(s){return s.scheduled;}).length,sg.filter(function(s){return !s.scheduled;}).length];});
+      return [cs.filter(function(s){return s.type==="full";}).length,cs.filter(function(s){return s.type==="short";}).length,sg.filter(function(s){return s.scheduled&&!s.sub;}).length,sg.filter(function(s){return !s.scheduled;}).length];});
     var mx=Math.max(7,Math.max.apply(null,rows.map(function(r){return Math.max(r[0]+r[1],r[2],r[3]);})));
     a=axes(g,W.map(function(w){return "W"+w;}),mx,"count","week",Math.min(7,mx));
     rows.forEach(function(r,i){var cx=g.L+a.pw*(i+0.5)/W.length,bwid=Math.min(16,a.pw/W.length/3.4),y0=g.T+a.ph;
@@ -1027,22 +1036,22 @@ function reportData(){
     if(d!==0&&(d*m[2])<0)l+=" That is worse than Day 0.";
     lines.push(l);});
   var comp=data.sessions.filter(function(s){return s.completed;}),full=comp.filter(function(s){return s.type==="full";}).length;
-  var drills=data.sighs.filter(function(s){return s.scheduled;}).length,od=data.sighs.length-drills;
+  var drills=data.sighs.filter(function(s){return s.scheduled&&!s.sub;}).length,subs=data.sighs.filter(function(s){return s.sub;}).length,od=data.sighs.filter(function(s){return !s.scheduled;}).length;
   function top(arr){var c={};arr.forEach(function(v){if(v)c[v]=(c[v]||0)+1;});return Object.keys(c).sort(function(p,q){return c[q]-c[p];}).slice(0,3).map(function(k){return k+" ("+c[k]+")";});}
   var moods=top([].concat.apply([],data.sessions.map(function(s){return s.mood||[];}))),trig=top(data.sighs.filter(function(s){return !s.scheduled;}).map(function(s){return s.trigger;}));
-  return {lw:lw,lines:lines,comp:comp.length,full:full,short:comp.length-full,counted:countedCount(),drills:drills,od:od,ev:data.evenings.length,moods:moods,trig:trig};
+  return {lw:lw,lines:lines,comp:comp.length,full:full,short:comp.length-full,counted:countedCount(),drills:drills,subs:subs,od:od,ev:data.evenings.length,moods:moods,trig:trig};
 }
 function reportText(){
   var r=reportData(),t=["Breathe — report ("+dayKey()+")",""];
   t.push(r.lw?"Day 0 vs week "+r.lw.week+" check-in:":"No weekly check-in yet.");r.lines.forEach(function(l){t.push("- "+l);});
-  t.push("","Sessions completed: "+r.comp+" ("+r.full+" full, "+r.short+" short); counted days: "+r.counted,"Midday drills: "+r.drills,"On-demand sighs: "+r.od,"Evening check-ins: "+r.ev);
+  t.push("","Sessions completed: "+r.comp+" ("+r.full+" full, "+r.short+" short); counted days: "+r.counted,"Midday drills: "+r.drills,"Sigh days: "+r.subs,"On-demand sighs: "+r.od,"Evening check-ins: "+r.ev);
   t.push("","Most frequent moods: "+(r.moods.join(", ")||"none yet"),"Most frequent stress triggers: "+(r.trig.join(", ")||"none yet"));
   return t.join("\n");
 }
 function reportHTML(){
   var r=reportData(),h='<div class="hdr"><h1>Report</h1><button class="btn sec" style="width:auto" id="rpBack">Back</button></div>';
   h+='<div class="card"><h3>'+(r.lw?'Day 0 vs week '+r.lw.week+' check-in':'Day 0 vs latest check-in')+'</h3>'+(r.lines.length?r.lines.map(function(l){return '<p>'+esc(l)+'</p>';}).join(""):emptyMsg(1))+'</div>';
-  h+='<div class="card"><h3>Totals</h3><p>Sessions completed: '+r.comp+' ('+r.full+' full, '+r.short+' short)<br>Counted days: '+r.counted+'<br>Midday drills: '+r.drills+'<br>On-demand sighs: '+r.od+'<br>Evening check-ins: '+r.ev+'</p></div>';
+  h+='<div class="card"><h3>Totals</h3><p>Sessions completed: '+r.comp+' ('+r.full+' full, '+r.short+' short)<br>Counted days: '+r.counted+'<br>Midday drills: '+r.drills+'<br>Sigh days: '+r.subs+'<br>On-demand sighs: '+r.od+'<br>Evening check-ins: '+r.ev+'</p></div>';
   h+='<div class="card"><h3>Most frequent moods</h3><p>'+esc(r.moods.join(", ")||"None yet")+'</p><h3>Most frequent stress triggers</h3><p>'+esc(r.trig.join(", ")||"None yet")+'</p></div>';
   h+='<button class="btn" id="rpCopy">Copy report as text</button><p class="dim" id="rpMsg"></p>';
   return h;
@@ -1071,7 +1080,7 @@ function bindInstall(){
   var g=$("installGo");if(g)g.onclick=function(){if(!deferredPrompt)return;var p=deferredPrompt;deferredPrompt=null;try{p.prompt();(p.userChoice||Promise.resolve()).then(function(){render();});}catch(e){render();}};
   var x=$("installX");if(x)x.onclick=function(){lsSet(INSTALL_KEY,"1");var c=$("installCard");if(c)c.remove();};
 }
-window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;if(tab==="practice"&&!view&&!(S&&S.running))render();});
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;if(safeToRefresh())render();});
 window.addEventListener("appinstalled",function(){deferredPrompt=null;lsSet(INSTALL_KEY,"1");var c=$("installCard");if(c)c.remove();});
 if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
 
@@ -1081,7 +1090,11 @@ document.addEventListener("click",function(e){var t=e.target;if(t&&t.classList&&
 /* ============ INIT ============ */
 if(firstLaunch){view="onboard";obStep=1;}
 render();
-setInterval(function(){if(tab==="practice"&&!view&&!S)render();},60000); /* refresh due banners */
+/* Refresh the home screen only when the due banners change, and never while a form is open or being filled in. */
+function safeToRefresh(){var ae=document.activeElement;return tab==="practice"&&!view&&!S&&!eveningOpen&&!formDirty&&!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));}
+function bannerKey(){return dayKey()+"|"+dueReminders().map(function(r){return r[0];}).join(",");}
+var lastBannerKey=bannerKey();
+setInterval(function(){var k=bannerKey();if(k!==lastBannerKey&&safeToRefresh()){lastBannerKey=k;render();}},60000);
 </script>
 </body>
 </html>
