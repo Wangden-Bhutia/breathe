@@ -17,9 +17,9 @@
 :root{--bg:#0b2a2c;--bg2:#113a3d;--card:#16474a;--line:#22605f;--txt:#e6f4f1;--dim:#9cc5bf;--acc:#5fd3bf;--acc2:#2fa894;--red:#c0392b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:1.5}
-#testbar{display:none;position:sticky;top:0;z-index:50;background:var(--red);color:#fff;text-align:center;font-weight:700;padding:6px;letter-spacing:2px}
+#testbar{display:none;position:sticky;top:0;z-index:50;background:var(--red);color:#fff;text-align:center;font-weight:700;padding:6px;padding-top:calc(6px + env(safe-area-inset-top));letter-spacing:2px}
 body.test #testbar{display:block}
-main{max-width:560px;margin:0 auto;padding:16px 16px 100px}
+main{max-width:560px;margin:0 auto;padding:16px 16px 100px;padding-top:max(16px, env(safe-area-inset-top))}
 h1{font-size:28px;margin:8px 0 4px;font-weight:600}
 h2{font-size:22px;margin:16px 0 8px;font-weight:600}
 h3{font-size:18px;margin:12px 0 6px}
@@ -89,14 +89,15 @@ input[type=time]{width:100%;background:var(--bg2);color:var(--txt);border:1px so
 #sess{position:fixed;inset:0;z-index:60;background:var(--bg);display:none;overflow:auto}
 #sess.show{display:block}
 #sess.dark{background:#020606;color:#5f7f7b}
-#sess .inner{max-width:560px;margin:0 auto;padding:24px 18px 40px;min-height:100%}
-#stopBtn{position:fixed;top:12px;right:12px;z-index:70;background:rgba(255,255,255,.06);color:#7a9a95;border:1px solid #244;border-radius:10px;min-height:44px;min-width:64px;font-size:15px;display:none}
-body.test #stopBtn{top:44px}
+#sess .inner{max-width:560px;margin:0 auto;padding:24px 18px 40px;padding-top:max(24px, env(safe-area-inset-top));min-height:100%}
+#stopBtn{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:70;background:rgba(255,255,255,.06);color:#7a9a95;border:1px solid #244;border-radius:10px;min-height:44px;min-width:64px;font-size:15px;display:none}
+body.test #stopBtn{top:calc(44px + env(safe-area-inset-top))}
 .circleWrap{display:flex;justify-content:center;align-items:center;height:300px}
 .circle{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,#1f5f59,#0b2f2c);border:2px solid #1d4a46;display:flex;align-items:center;justify-content:center;font-size:40px;color:#7aa39d;transform:scale(1);transition-timing-function:ease-in-out}
 .cue{text-align:center;font-size:18px;color:#6f8f8a;min-height:56px}
 .big{font-size:48px;text-align:center;font-weight:300;color:#7aa39d}
-#tapZone{position:fixed;inset:0;z-index:65;display:none;align-items:center;justify-content:center;flex-direction:column;background:#020606;color:#5f7f7b;text-align:center;padding:24px}
+#tapZone{position:fixed;inset:0;z-index:65;display:none;align-items:center;justify-content:center;flex-direction:column;background:#020606;color:#5f7f7b;text-align:center;padding:24px;padding-top:max(24px, env(safe-area-inset-top))}
+#tapZone:focus{outline:none}#tapZone:focus-visible{outline:2px solid #1d4a46;outline-offset:-6px}
 #tapZone .watch{font-size:22px;color:#4c6a66;margin:12px}
 #tapZone .lbl{font-size:20px;color:#6f8f8a;margin-top:30px}
 .modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px}
@@ -131,7 +132,7 @@ details.wk>summary{background:var(--card);border:1px solid var(--line);border-ra
 </nav>
 <div id="sess"><div class="inner" id="sessInner"></div></div>
 <button id="stopBtn">Stop</button>
-<div id="tapZone"><div class="cue" id="tapCue"></div><div class="watch" id="watch">0:00</div><div class="lbl">Tap anywhere to breathe in</div></div>
+<div id="tapZone" role="button" tabindex="0" aria-label="Breathe in"><div class="cue" id="tapCue"></div><div class="watch" id="watch">0:00</div><div class="lbl">Tap anywhere to breathe in</div></div>
 <div class="modal" id="modal"><div class="card" id="modalCard"></div></div>
 <input type="file" id="importFile" accept=".json,application/json" style="display:none">
 
@@ -156,9 +157,45 @@ function defaultData(){
     sessions:[],sighs:[],weekly:[],evenings:[],cold:[],notes:""
   };
 }
+/* Clean every stored value: numbers finite or null, booleans true/false, enums from their list, dates valid (else the item is dropped), times HH:MM, other text String. Unknown fields are kept as they are. */
+function sNum(v){return (typeof v==="number"&&isFinite(v))?v:null;}
+function sBool(v){return v===true;}
+function sStr(v){return v==null?v:String(v);}
+function sDate(v){if(v==null||v==="")return null;var t=new Date(v);return isNaN(t.getTime())?null:v;}
+function sEnum(v,list,dflt){return list.indexOf(v)>=0?v:dflt;}
+function sTime(v){return (typeof v==="string"&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v))?v:null;}
+function has(o,k){return Object.prototype.hasOwnProperty.call(o,k);}
+function cleanObj(o,spec){var x=Object.assign({},o);Object.keys(spec).forEach(function(k){if(has(x,k))x[k]=spec[k](x[k]);});return x;}
+function cleanList(arr,spec){if(!Array.isArray(arr))return [];var out=[];arr.forEach(function(o){if(!o||typeof o!=="object"||Array.isArray(o))return;if(!sDate(o.date))return;out.push(cleanObj(o,spec));});return out;}
+function numArr(v){return Array.isArray(v)?v.map(sNum).filter(function(n){return n!==null;}):[];}
+function boolArr(v){return Array.isArray(v)?v.map(sBool):[];}
+function strArr(v){return Array.isArray(v)?v.filter(function(x){return x!=null;}).map(String):[];}
+function sanitize(o){
+  var def=defaultData();
+  var st=o.settings;
+  ["breathTones","phaseChimes","voiceCues","showHolds","extraRound","bodyScan","squeeze","coldGentle"].forEach(function(k){if(has(st,k))st[k]=sBool(st[k]);});
+  st.breathSec=sNum(st.breathSec);
+  ["holdPrompt","holdStop","maintRounds","maintBreaths"].forEach(function(k){var v=sNum(st[k]);st[k]=v===null?def.settings[k]:v;});
+  st.pace=sEnum(st.pace,["normal","slow"],"normal");
+  ["morningTime","middayTime","eveningTime"].forEach(function(k){st[k]=sTime(st[k]);});
+  var m=o.meta;
+  m.startedAt=sDate(m.startedAt);m.lastFullSafety=sDate(m.lastFullSafety);
+  m.signal=strArr(m.signal);m.review28Done=sBool(m.review28Done);
+  m.maintenanceMode=sEnum(m.maintenanceMode,[null,"daily","3-4","sighing"],null);
+  if(has(m,"seen")){if(!m.seen||typeof m.seen!=="object"||Array.isArray(m.seen))m.seen={};else{var sn={};Object.keys(m.seen).forEach(function(k){sn[k]=sBool(m.seen[k]);});m.seen=sn;}}
+  var b=o.baseline;b.date=sDate(b.date);["sleep","irritability","switchOff","stress"].forEach(function(k){b[k]=sNum(b[k]);});
+  o.sessions=cleanList(o.sessions,{id:sStr,type:function(v){return sEnum(v,["full","short"],"full");},completed:sBool,counted:sBool,programmeDay:sNum,before:sNum,after:sNum,breaths:sNum,rounds:sNum,holds:numArr,capped:boolArr,squeeze:sBool,bodyScanDone:sBool,intention:function(v){return sEnum(v,["","done","skipped"],"");},intentionText:sStr,mood:strArr,reflection:sStr});
+  o.sighs=cleanList(o.sighs,{id:sStr,minutes:sNum,plannedMinutes:sNum,before:sNum,after:sNum,trigger:sStr,scheduled:sBool,sub:sBool});
+  o.weekly=cleanList(o.weekly,{week:sNum,sleep:sNum,irritability:sNum,switchOff:sNum,stress:sNum,note:sStr});
+  o.evenings=cleanList(o.evenings,{moment:sStr,usedBreath:sStr,noticedWhen:sStr,signalNoticed:sStr});
+  o.cold=cleanList(o.cold,{seconds:sNum});
+  o.notes=typeof o.notes==="string"?o.notes:(o.notes==null?"":String(o.notes));
+  o.version=sNum(o.version)===null?1:o.version;
+  return o;
+}
 function merge(d){
   var def=defaultData();
-  if(!d||typeof d!=="object") return def;
+  if(!d||typeof d!=="object"||Array.isArray(d)) return def;
   var out=Object.assign({},def,d);
   out.settings=Object.assign({},def.settings,d.settings||{});
   out.meta=Object.assign({},def.meta,d.meta||{});
@@ -166,7 +203,8 @@ function merge(d){
   ["sessions","sighs","weekly","evenings","cold"].forEach(function(k){if(!Array.isArray(out[k]))out[k]=[];});
   if(!Array.isArray(out.meta.signal)) out.meta.signal=[];
   if(typeof out.notes!=="string") out.notes="";
-  return out;
+  ["settings","meta","baseline"].forEach(function(k){if(!out[k]||typeof out[k]!=="object"||Array.isArray(out[k]))out[k]=def[k];});
+  return sanitize(out);
 }
 function load(){
   try{var raw=localStorage.getItem(key());return raw?merge(JSON.parse(raw)):null;}catch(e){return null;}
@@ -259,7 +297,34 @@ function playVoice(text,chimed){
 var wakeLock=null;
 function lockOn(){try{if(navigator.wakeLock&&navigator.wakeLock.request){navigator.wakeLock.request("screen").then(function(w){wakeLock=w;}).catch(function(){});}}catch(e){}}
 function lockOff(){try{if(wakeLock){wakeLock.release();wakeLock=null;}}catch(e){}}
-document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S&&S.running)lockOn();});
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="hidden"){if(S&&S.running&&!S.sigh&&!S.paused&&S.phase)pauseSession();return;}
+  if(S&&S.paused){showPaused();return;}
+  if(S&&S.running)lockOn();
+});
+/* Pause on lock / app switch: stop timers and audio, then offer Resume or Stop when the page is visible again. */
+function pauseSession(){
+  S.paused=true;S.pausedPhase=S.phase;
+  clearT();try{if(window.speechSynthesis)speechSynthesis.cancel();}catch(e){}
+  try{if(curClip){curClip.pause();curClip.currentTime=0;}}catch(e){}
+  var tz=$("tapZone");tz.style.display="none";tz.onclick=null;tz.onkeydown=null;
+  lockOff();
+}
+function showPaused(){
+  $("stopBtn").style.display="none";
+  sessShow('<div style="padding-top:20vh;text-align:center"><h2 style="color:#7aa39d">Paused</h2><button class="btn" id="psResume">Resume</button><button class="btn sec" id="psStop" style="color:#7aa39d">Stop session</button></div>',true);
+  $("psResume").onclick=resumeSession;
+  $("psStop").onclick=function(){S.paused=false;stopSession();};
+}
+function resumeSession(){
+  if(!S)return;var ph=S.pausedPhase;S.paused=false;lockOn();
+  if(ph==="intention"){afterStep();return;}
+  $("stopBtn").style.display="block";
+  /* A hold already recorded for this round stays recorded: after a pause in recovery, carry on with the next round (or finish). */
+  if(ph==="recovery"&&S.holds.length>=S.round){if(S.round>=S.rounds)intentionStep();else pause();return;}
+  while(S.holds.length>=S.round&&S.round<S.rounds)S.round++;
+  breathsPhase();
+}
 
 /* ============ TEXT ============ */
 var MOODS=["Calm","Clear","Settled","Restless","Heavy","Emotional","Tired"];
@@ -480,7 +545,7 @@ function logHTML(){
       h+='<details class="wk"'+(firstW?' open':'')+'><summary>Week '+w+(w>4?' · maintenance':'')+' <span class="dim" style="font-weight:400">· '+cnt+' session'+(cnt>1?'s':'')+'</span></summary><div class="body">';firstW=false;}
     h+='<div class="card"><div class="dim">'+esc(fmtDate(s.date))+'</div><div><strong>Day '+esc(s.programmeDay)+'</strong> · '+(s.type==="short"?"short":"full")+
       (!s.completed?'<span class="tag">stopped</span>':(!s.counted?'<span class="tag ex">extra</span>':''))+'</div>';
-    h+='<div>'+(s.before!=null?esc(s.before):'–')+' → '+(s.after!=null?esc(s.after):'–')+' <span class="dim">· '+sessRounds(s)+' × '+(s.breaths||30)+'</span>'+(s.intention==="done"?' <span class="dim">· Intention ✓</span>':'')+'</div>';
+    h+='<div>'+(s.before!=null?esc(s.before):'–')+' → '+(s.after!=null?esc(s.after):'–')+' <span class="dim">· '+esc(sessRounds(s))+' × '+esc(s.breaths||30)+'</span>'+(s.intention==="done"?' <span class="dim">· Intention ✓</span>':'')+'</div>';
     if(s.intentionText)h+='<p class="dim" style="margin:4px 0">Intention: '+esc(s.intentionText)+'</p>';
     if(s.mood&&s.mood.length)h+='<div class="chips">'+s.mood.map(function(m){return '<span class="chip small">'+esc(m)+'</span>';}).join("")+'</div>';
     if(s.reflection)h+='<p><em>'+esc(s.reflection)+'</em></p>';
@@ -497,7 +562,7 @@ function intentionCount(){var c=data.sessions.filter(function(s){return s.comple
 function bindLog(){drawCharts();$("viewReport").onclick=function(){view="report";render();window.scrollTo(0,0);};var t=$("notes");t.oninput=function(){data.notes=t.value;save();};}
 
 /* ============ SETTINGS ============ */
-function swHTML(id,on){return '<button class="sw'+(on?' on':'')+'" id="'+id+'" role="switch" aria-checked="'+on+'"></button>';}
+function swHTML(id,on,label){return '<button class="sw'+(on?' on':'')+'" id="'+id+'" role="switch" aria-checked="'+on+'" aria-label="'+esc(label||id)+'"></button>';}
 function settingsHTML(){
   var s=data.settings,h='<div class="hdr"><h1>Settings</h1><button class="btn sec" style="width:auto" id="back">Done</button></div>';
   h+='<div class="card">';
@@ -506,21 +571,21 @@ function settingsHTML(){
      '<input type="range" id="paceIn" min="'+PACE_MIN+'" max="'+PACE_MAX+'" step="'+PACE_STEP+'" value="'+bi+'" aria-label="Seconds per inhale and exhale">'+
      '<div class="slab"><span>faster</span><span>slower</span></div>'+
      '<p class="dim" id="paceTxt" style="font-size:15px">'+esc(paceText(bi))+'</p>'+
-     '<div class="seg" style="width:max-content"><button class="pp'+(bi===1.5?' on':'')+'" data-v="1.5">Fast</button><button class="pp'+(bi===2?' on':'')+'" data-v="2">Normal</button><button class="pp'+(bi===3?' on':'')+'" data-v="3">Slow</button></div>'+
+     '<div class="seg" style="width:max-content"><button class="pp'+(bi===1.5?' on':'')+'" data-v="1.5" aria-pressed="'+(bi===1.5)+'">Fast</button><button class="pp'+(bi===2?' on':'')+'" data-v="2" aria-pressed="'+(bi===2)+'">Normal</button><button class="pp'+(bi===3?' on':'')+'" data-v="3" aria-pressed="'+(bi===3)+'">Slow</button></div>'+
      '<div class="prevWrap"><div class="circle" id="prevCirc"></div></div>'+
      '<button class="btn sec" id="paceTry">Preview 3 breaths</button>'+
      '<p class="dim" style="font-size:15px">A comfortable pace lets you fill the belly, then the chest, and let go without pushing. You can also change it during a session.</p></div>';
-  h+='<div class="toggle"><span>Breath tones</span>'+swHTML("sTones",s.breathTones)+'</div>';
-  h+='<div class="toggle"><span>Phase chimes<br><span class="dim" style="font-size:15px">A distinct sound at each change, so you can keep your eyes closed.</span></span>'+swHTML("sChime",s.phaseChimes!==false)+'</div>';
-  h+='<div class="toggle"><span>Voice cues</span>'+swHTML("sVoice",s.voiceCues)+'</div>';
-  h+='<div class="toggle"><span>Show hold times<br><span class="dim" style="font-size:15px">Hold times are hidden so you don\'t compete with them.</span></span>'+swHTML("sHolds",s.showHolds)+'</div>';
+  h+='<div class="toggle"><span>Breath tones</span>'+swHTML("sTones",s.breathTones,"Breath tones")+'</div>';
+  h+='<div class="toggle"><span>Phase chimes<br><span class="dim" style="font-size:15px">A distinct sound at each change, so you can keep your eyes closed.</span></span>'+swHTML("sChime",s.phaseChimes!==false,"Phase chimes")+'</div>';
+  h+='<div class="toggle"><span>Voice cues</span>'+swHTML("sVoice",s.voiceCues,"Voice cues")+'</div>';
+  h+='<div class="toggle"><span>Show hold times<br><span class="dim" style="font-size:15px">Hold times are hidden so you don\'t compete with them.</span></span>'+swHTML("sHolds",s.showHolds,"Show hold times")+'</div>';
   h+=settings2HTML();
   h+='</div><div class="card"><h3>Data</h3><button class="btn sec" id="exp">Export data</button><button class="btn sec" id="imp">Import data</button><button class="btn danger" id="rst">Reset all data</button></div>';
-  h+='<div class="card"><div class="toggle"><span>Test mode</span>'+swHTML("sTest",testMode)+'</div>';
+  h+='<div class="card"><div class="toggle"><span>Test mode</span>'+swHTML("sTest",testMode,"Test mode")+'</div>';
   if(testMode){
     h+='<h3>Test tools</h3><p>Jump to programme day</p><div class="row"><input type="number" id="jumpN" min="0" max="60" value="4"><button class="btn sec" id="jump" style="margin:0">Jump</button></div>';
     h+='<button class="btn sec" id="fill">Fill 28 days of sample data</button>';
-    h+='<div class="toggle"><span>Fast timings (10×)</span>'+swHTML("sFast",fastTimings)+'</div>';
+    h+='<div class="toggle"><span>Fast timings (10×)</span>'+swHTML("sFast",fastTimings,"Fast timings")+'</div>';
   }
   h+='</div>';
   return h;
@@ -529,7 +594,7 @@ function bindSettings(){
   var s=data.settings;
   $("back").onclick=function(){view=null;tab="practice";render();};
   function paceUI(v){$("paceIn").value=v;$("paceTxt").textContent=paceText(v);$("paceLbl").textContent=v<=1.75?'fast':v>=3?'slow':'normal';
-    document.querySelectorAll(".pp").forEach(function(b){b.classList.toggle("on",+b.dataset.v===v);});}
+    document.querySelectorAll(".pp").forEach(function(b){b.classList.toggle("on",+b.dataset.v===v);b.setAttribute("aria-pressed",+b.dataset.v===v?"true":"false");});}
   $("paceIn").oninput=function(){paceUI(setBreathIn(+$("paceIn").value));};
   document.querySelectorAll(".pp").forEach(function(b){b.onclick=function(){paceUI(setBreathIn(+b.dataset.v));};});
   $("paceTry").onclick=previewPace;
@@ -716,10 +781,11 @@ function stopSession(){
   if(!S)return;
   clearT();try{speechSynthesis.cancel();}catch(e){}
   var n=countedCount();
-  data.sessions.push({id:uid(),date:new Date().toISOString(),type:S.type,completed:false,counted:false,programmeDay:countedToday()?Math.max(1,n):n+1,before:S.before,after:null,holds:S.holds.slice(),capped:S.capped.slice(),breaths:S.breaths,rounds:S.rounds,squeeze:!!S.squeeze,intention:S.intention||"",mood:[],reflection:""});
+  data.sessions.push({id:uid(),date:new Date().toISOString(),type:S.type,completed:false,counted:false,programmeDay:countedToday()?Math.max(1,n):n+1,before:S.before,after:null,holds:S.holds.slice(),capped:S.capped.slice(),breaths:S.breaths,rounds:S.rounds,squeeze:!!S.squeeze,intention:S.intention||"",mood:[],reflection:"",bodyScanDone:false});
   save();S.running=false;lockOff();S=null;leaveSess();render();
 }
 function breathsPhase(){
+  S.phase="breaths";S.phaseRound=S.round;
   var i=0;
   sessShow('<p class="cue" style="margin-top:40px">Round '+S.round+' of '+S.rounds+'</p><div class="circleWrap"><div class="circle" id="circ">0</div></div><p class="cue">Fully in — belly, chest, head. Let it go. Don\'t push it out.</p>'+
     '<div class="paceRow"><button id="slower" aria-label="Slower">− Slower</button><button id="faster" aria-label="Faster">Faster +</button></div><div class="paceVal" id="paceNow">'+breathIn()+' s in / out</div>',true);
@@ -743,14 +809,15 @@ function breathsPhase(){
 }
 function retention(){
   if(!S||!S.running)return;
+  S.phase="hold";
   say("Hold.");
   sessShow('',true);
   var tz=$("tapZone");$("tapCue").textContent="Let it go and hold. Breathe in when you feel the urge.";
-  tz.style.display="flex";
+  tz.style.display="flex";try{tz.focus({preventScroll:true});}catch(e){}
   var H=holdTimes(),t0=performance.now(),nextVoice=H.prompt,armed=false,ended=false;
   T(function(){armed=true;},2000);
   function end(capped){
-    if(ended)return;ended=true;tz.onclick=null;cancelAnimationFrame(S.raf);
+    if(ended)return;ended=true;tz.onclick=null;tz.onkeydown=null;cancelAnimationFrame(S.raf);
     S.holds.push(capped?H.stop:Math.round((performance.now()-t0)/1000*speed()));S.capped.push(!!capped);
     tz.style.display="none";recovery(!!capped);
   }
@@ -764,10 +831,12 @@ function retention(){
   }
   tick();
   tz.onclick=function(){if(armed)end(false);};
+  tz.onkeydown=function(e){if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){e.preventDefault();if(armed)end(false);}};
 }
 var SQUEEZE_LINE="Breathe in. Hold — and gently squeeze, from the pelvic floor up to your head. Keep everything else relaxed.";
 function recovery(quiet){
-  var sq=S.squeeze&&S.round===2;
+  S.phase="recovery";
+  var sq=S.squeeze&&S.round===2&&!quiet;
   /* quiet: after the firm stop, "Breathe in now." has just been said; don't cut it off. */
   if(sq){if(quiet)T(function(){say(SQUEEZE_LINE);},2400);else say(SQUEEZE_LINE);}else if(!quiet)say("Breathe in. Hold.");
   var left=15;
@@ -782,7 +851,7 @@ function recovery(quiet){
   T(step,1000);
 }
 function pause(){
-  S.round++;
+  S.round++;S.phase="pause";
   var line=S.round===S.rounds?"Last round.":(S.round===2?"Round two.":"Round three.");
   say(line);
   var left=10;
@@ -817,10 +886,10 @@ function reflectStep(){
 }
 function finishSession(){
   S.finishedCount=true;
-  data.sessions.push({id:uid(),date:new Date().toISOString(),type:S.type,completed:true,counted:S.willCount,programmeDay:S.day,before:S.before,after:S.after,holds:S.holds.slice(),capped:S.capped.slice(),breaths:S.breaths,rounds:S.rounds,squeeze:!!S.squeeze,intention:S.intention||"",intentionText:S.intentionText||"",mood:S.mood,reflection:S.reflection});
+  data.sessions.push({id:uid(),date:new Date().toISOString(),type:S.type,completed:true,counted:S.willCount,programmeDay:S.day,before:S.before,after:S.after,holds:S.holds.slice(),capped:S.capped.slice(),breaths:S.breaths,rounds:S.rounds,squeeze:!!S.squeeze,intention:S.intention||"",intentionText:S.intentionText||"",mood:S.mood,reflection:S.reflection,bodyScanDone:false});
   if(!data.meta.startedAt)data.meta.startedAt=new Date().toISOString();
   save();
-  var h='<div style="padding-top:14vh;text-align:center"><h1>Session complete.</h1><p class="sval">'+S.before+' → '+S.after+'</p>';
+  var h='<div style="padding-top:14vh;text-align:center"><h1>Session complete.</h1><p class="sval">'+esc(S.before)+' → '+esc(S.after)+'</p>';
   if(S.willCount&&S.day===3)h+='<p>Three days is a beginning, not a finish line. You\'ve just finished the first part of Week 1 — keep going.</p>';
   h+='<button class="btn" id="dDone">Done</button></div>';
   sessShow(h);
@@ -862,7 +931,7 @@ function gate(){
 /* weekly check-in */
 function weeklyHTML(){
   var b=data.baseline||{},due=weeklyDue()||{week:Math.floor(countedCount()/7)};
-  return '<h1>Weekly check-in</h1><p class="dim">Week '+due.week+'</p>'+
+  return '<h1>Weekly check-in</h1><p class="dim">Week '+esc(due.week)+'</p>'+
     sliderHTML("w_sleep","Sleep quality","1 = poor","10 = excellent",5,b.sleep)+
     sliderHTML("w_irr","Irritability","1 = low","10 = high",5,b.irritability)+
     sliderHTML("w_sw","Ability to switch off after work","1 = hard","10 = easy",5,b.switchOff)+
@@ -883,14 +952,14 @@ function reviewHTML(){
   var h='<h1>Four weeks done.</h1><div class="card"><table class="rv"><tr><th></th><th>Day 0</th><th>Week 4</th><th>Change</th></tr>';
   var lines='';
   MEAS.forEach(function(m){var a=b[m[0]],c=w4[m[0]];var d=(a!=null&&c!=null)?c-a:null;
-    h+='<tr><td>'+esc(m[1])+'</td><td>'+(a!=null?a:'–')+'</td><td>'+(c!=null?c:'–')+'</td><td>'+(d==null?'–':(d>0?'+'+d:d))+'</td></tr>';
+    h+='<tr><td>'+esc(m[1])+'</td><td>'+esc(a!=null?a:'–')+'</td><td>'+esc(c!=null?c:'–')+'</td><td>'+esc(d==null?'–':(d>0?'+'+d:d))+'</td></tr>';
     if(d!=null){var dir=d===0?'no change':(d<0?'down '+(-d):'up '+d);var q=d===0?'':((d*m[2])>0?' — better ('+(m[2]>0?'higher':'lower')+' is better)':' — worse ('+(m[2]>0?'higher':'lower')+' is better)');
       lines+='<p>'+esc(m[1]+': '+a+' → '+c+', '+dir+q)+'</p>';}
   });
   h+='</table>'+lines+'</div>';
   var comp=data.sessions.filter(function(s){return s.completed;}),full=comp.filter(function(s){return s.type==="full";}).length;
   var drill=data.sighs.filter(function(x){return x.scheduled&&!x.sub;}).length,subs=data.sighs.filter(function(x){return x.sub;}).length,od=data.sighs.filter(function(x){return !x.scheduled;}).length;
-  h+='<div class="card"><p>You completed '+comp.length+' sessions ('+full+' full, '+(comp.length-full)+' short), the midday drill '+drill+' times, and used the sigh tool on demand '+od+' times.'+(subs?' You also did '+subs+' sigh day'+(subs>1?'s':'')+' when you couldn\'t lie down.':'')+'</p>'+
+  h+='<div class="card"><p>You completed '+esc(comp.length)+' sessions ('+esc(full)+' full, '+esc(comp.length-full)+' short), the midday drill '+esc(drill)+' times, and used the sigh tool on demand '+esc(od)+' times.'+(subs?' You also did '+subs+' sigh day'+(subs>1?'s':'')+' when you couldn\'t lie down.':'')+'</p>'+
     '<p>Cold showers: '+coldDays()+' days (target 5 a week).</p><p>Intention: '+intentionCount().done+' of '+intentionCount().of+' sessions.</p></div>';
   h+='<p>Let your own numbers decide how to continue.</p>'+modeButtons()+'<button class="btn sec" id="rvLater">Later</button>';
   return h;
@@ -998,6 +1067,7 @@ function sighAfter(){
 var INTENTION=["Stay where you are. Bring one thought to mind for today — something you mean to do, or how you want to feel.","Hold it, and notice how your body responds.","If something in you resists, keep breathing steadily until body and mind line up."];
 function intentionStep(){
   if(!S||!S.running)return;
+  S.phase="intention";
   var shown=0,left=60,doneI=false;
   sessShow('<p class="cue" style="margin-top:50px">Intention</p><div id="intLines"></div><div class="big" id="intT" style="font-size:28px">1:00</div><button class="btn sec" id="intSkip" style="margin-top:24px">Skip</button>',true);
   function line(k){if(!S||!S.running||doneI)return;var d=document.createElement("p");d.className="cue";d.style.minHeight="0";d.textContent=INTENTION[k];var L=$("intLines");if(L)L.appendChild(d);say(INTENTION[k]);}
@@ -1030,14 +1100,14 @@ function settings2HTML(){
      '<input type="range" id="hpIn" min="90" max="180" step="15" value="'+H.prompt+'" aria-label="Gentle prompt starts at">'+
      '<div class="hdr" style="margin-top:8px"><span>Hold: firm "Breathe in now" at</span><strong id="hsV">'+fmtSec(H.stop)+'</strong></div>'+
      '<input type="range" id="hsIn" min="120" max="'+HOLD_STOP_MAX+'" step="15" value="'+H.stop+'" aria-label="Firm stop at">'+
-     '<p class="dim" style="font-size:15px">You always end the hold yourself, when you feel the urge to breathe. These only set when the app reminds you. The 3:30 ceiling is the limit used in the 2026 clinical trial.</p></div>';
+     '<p class="dim" style="font-size:15px">End the hold yourself when you feel the urge to breathe. If you\'re still holding at the firm stop, the app moves you on to the recovery breath. The 3:30 ceiling is the limit used in the 2026 clinical trial.</p></div>';
   if(n>=28){var mr=(+s.maintRounds===3)?3:4,mb=+s.maintBreaths||40;
     h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div>Rounds and breaths</div><p class="dim" style="font-size:15px;margin:4px 0 8px">The book\'s range is 3–4 rounds of 30–40 breaths.</p>'+
-       '<div class="row" style="align-items:center"><span>Rounds</span><div class="seg" style="flex:none">'+[3,4].map(function(v){return '<button class="mR'+(mr===v?' on':'')+'" data-v="'+v+'">'+v+'</button>';}).join("")+'</div></div>'+
-       '<div class="row" style="align-items:center;margin-top:8px"><span>Breaths</span><div class="seg" style="flex:none">'+[30,35,40].map(function(v){return '<button class="mB'+(mb===v?' on':'')+'" data-v="'+v+'">'+v+'</button>';}).join("")+'</div></div></div>';}
-  h+='<div class="toggle"><span>Cold: gentler start<br><span class="dim" style="font-size:15px">15 s in week 1, building more slowly (45 s, 75 s, then 2 min).</span></span>'+swHTML("sColdG",!!s.coldGentle)+'</div>';
-  if(n>=7&&n<21)h+='<div class="toggle"><span>Optional 4th round (weeks 2–3)<br><span class="dim" style="font-size:15px">From week 4 there are always 4 rounds.</span></span>'+swHTML("sExtra",s.extraRound)+'</div>';
-  if(n>=14)h+='<div class="toggle"><span>Squeeze on the round 2 recovery breath<br><span class="dim" style="font-size:15px">Optional, from the book: tense the pelvic floor and draw the pressure up to the head, everything else relaxed.</span></span>'+swHTML("sSqz",!!s.squeeze)+'</div>';
+       '<div class="row" style="align-items:center"><span>Rounds</span><div class="seg" style="flex:none">'+[3,4].map(function(v){return '<button class="mR'+(mr===v?' on':'')+'" data-v="'+v+'" aria-pressed="'+(mr===v)+'" aria-label="'+v+' rounds">'+v+'</button>';}).join("")+'</div></div>'+
+       '<div class="row" style="align-items:center;margin-top:8px"><span>Breaths</span><div class="seg" style="flex:none">'+[30,35,40].map(function(v){return '<button class="mB'+(mb===v?' on':'')+'" data-v="'+v+'" aria-pressed="'+(mb===v)+'" aria-label="'+v+' breaths">'+v+'</button>';}).join("")+'</div></div></div>';}
+  h+='<div class="toggle"><span>Cold: gentler start<br><span class="dim" style="font-size:15px">15 s in week 1, building more slowly (45 s, 75 s, then 2 min).</span></span>'+swHTML("sColdG",!!s.coldGentle,"Cold: gentler start")+'</div>';
+  if(n>=7&&n<21)h+='<div class="toggle"><span>Optional 4th round (weeks 2–3)<br><span class="dim" style="font-size:15px">From week 4 there are always 4 rounds.</span></span>'+swHTML("sExtra",s.extraRound,"Optional 4th round")+'</div>';
+  if(n>=14)h+='<div class="toggle"><span>Squeeze on the round 2 recovery breath<br><span class="dim" style="font-size:15px">Optional, from the book: tense the pelvic floor and draw the pressure up to the head, everything else relaxed.</span></span>'+swHTML("sSqz",!!s.squeeze,"Squeeze on the round 2 recovery breath")+'</div>';
   if(n>=14)h+='<div class="toggle"><span>Early-warning signal<br><span class="dim" style="font-size:15px">'+esc((data.meta.signal||[]).join(", ")||"Not set")+'</span></span><button class="btn sec" style="width:auto;margin:0" id="sigEdit">Edit</button></div>';
   h+='</div><div class="card"><h3>Reminders</h3>';
   h+='<p>Morning</p><input type="time" id="tM" value="'+esc(s.morningTime||"")+'">';
@@ -1207,8 +1277,8 @@ function reportText(){
 }
 function reportHTML(){
   var r=reportData(),h='<div class="hdr"><h1>Report</h1><button class="btn sec" style="width:auto" id="rpBack">Back</button></div>';
-  h+='<div class="card"><h3>'+(r.lw?'Day 0 vs week '+r.lw.week+' check-in':'Day 0 vs latest check-in')+'</h3>'+(r.lines.length?r.lines.map(function(l){return '<p>'+esc(l)+'</p>';}).join(""):emptyMsg(1))+'</div>';
-  h+='<div class="card"><h3>Totals</h3><p>Sessions completed: '+r.comp+' ('+r.full+' full, '+r.short+' short)<br>Counted days: '+r.counted+'<br>Cold showers: '+r.cold+' days (target 5 a week)<br>Intention: '+r.intent.done+' of '+r.intent.of+' sessions</p><h3>Extras</h3><p>Midday drills: '+r.drills+'<br>Sigh days: '+r.subs+'<br>On-demand sighs: '+r.od+'<br>Evening check-ins: '+r.ev+'</p></div>';
+  h+='<div class="card"><h3>'+(r.lw?'Day 0 vs week '+esc(r.lw.week)+' check-in':'Day 0 vs latest check-in')+'</h3>'+(r.lines.length?r.lines.map(function(l){return '<p>'+esc(l)+'</p>';}).join(""):emptyMsg(1))+'</div>';
+  h+='<div class="card"><h3>Totals</h3><p>Sessions completed: '+esc(r.comp)+' ('+esc(r.full)+' full, '+esc(r.short)+' short)<br>Counted days: '+esc(r.counted)+'<br>Cold showers: '+esc(r.cold)+' days (target 5 a week)<br>Intention: '+esc(r.intent.done)+' of '+esc(r.intent.of)+' sessions</p><h3>Extras</h3><p>Midday drills: '+esc(r.drills)+'<br>Sigh days: '+esc(r.subs)+'<br>On-demand sighs: '+esc(r.od)+'<br>Evening check-ins: '+esc(r.ev)+'</p></div>';
   h+='<div class="card"><h3>Most frequent moods</h3><p>'+esc(r.moods.join(", ")||"None yet")+'</p><h3>Most frequent stress triggers</h3><p>'+esc(r.trig.join(", ")||"None yet")+'</p></div>';
   h+='<button class="btn" id="rpCopy">Copy report as text</button><p class="dim" id="rpMsg"></p>';
   return h;
@@ -1231,7 +1301,7 @@ function installCardHTML(){
   if(isStandalone()||lsGet(INSTALL_KEY)==="1")return "";
   var ios=isIOS()&&!deferredPrompt;if(!deferredPrompt&&!ios)return "";
   return '<div class="install" id="installCard"><img src="icons/icon-192.png" alt=""><div class="it"><strong>Install Breathe</strong><span>'+(ios?'Tap Share, then Add to Home Screen':'Add it to your home screen')+'</span></div>'+
-    (ios?'':'<button class="ib" id="installGo">Install</button>')+'<button class="ix" id="installX" aria-label="Dismiss">×</button></div>';
+    (ios?'':'<button class="ib" id="installGo">Install</button>')+'<button class="ix" id="installX" aria-label="Dismiss install card">×</button></div>';
 }
 function bindInstall(){
   var g=$("installGo");if(g)g.onclick=function(){if(!deferredPrompt)return;var p=deferredPrompt;deferredPrompt=null;try{p.prompt();(p.userChoice||Promise.resolve()).then(function(){render();});}catch(e){render();}};
