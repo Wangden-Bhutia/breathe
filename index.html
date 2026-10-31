@@ -480,16 +480,20 @@ function logHTML(){
       h+='<details class="wk"'+(firstW?' open':'')+'><summary>Week '+w+(w>4?' · maintenance':'')+' <span class="dim" style="font-weight:400">· '+cnt+' session'+(cnt>1?'s':'')+'</span></summary><div class="body">';firstW=false;}
     h+='<div class="card"><div class="dim">'+esc(fmtDate(s.date))+'</div><div><strong>Day '+esc(s.programmeDay)+'</strong> · '+(s.type==="short"?"short":"full")+
       (!s.completed?'<span class="tag">stopped</span>':(!s.counted?'<span class="tag ex">extra</span>':''))+'</div>';
-    h+='<div>'+(s.before!=null?esc(s.before):'–')+' → '+(s.after!=null?esc(s.after):'–')+'</div>';
+    h+='<div>'+(s.before!=null?esc(s.before):'–')+' → '+(s.after!=null?esc(s.after):'–')+' <span class="dim">· '+sessRounds(s)+' × '+(s.breaths||30)+'</span>'+(s.intention==="done"?' <span class="dim">· Intention ✓</span>':'')+'</div>';
+    if(s.intentionText)h+='<p class="dim" style="margin:4px 0">Intention: '+esc(s.intentionText)+'</p>';
     if(s.mood&&s.mood.length)h+='<div class="chips">'+s.mood.map(function(m){return '<span class="chip small">'+esc(m)+'</span>';}).join("")+'</div>';
     if(s.reflection)h+='<p><em>'+esc(s.reflection)+'</em></p>';
-    if(data.settings.showHolds&&s.holds&&s.holds.length)h+='<div class="dim">Holds: '+s.holds.map(fmtSec).join(" · ")+'</div>';
+    if(data.settings.showHolds&&s.holds&&s.holds.length)h+='<div class="dim">Holds: '+s.holds.map(function(v,k){return fmtSec(v)+(s.capped&&s.capped[k]?' (limit)':'');}).join(" · ")+'</div>';
     h+='</div>';
   });
   if(curW!==null)h+='</div></details>';
   h+='<h2>Notes</h2><textarea id="notes" placeholder="Notes">'+esc(data.notes)+'</textarea>';
   return h;
 }
+function sessRounds(s){return s.rounds||(s.type==="short"?2:3);}
+function coldDays(){return (data.cold||[]).length;}
+function intentionCount(){var c=data.sessions.filter(function(s){return s.completed&&s.intention;});return {done:c.filter(function(s){return s.intention==="done";}).length,of:c.length};}
 function bindLog(){drawCharts();$("viewReport").onclick=function(){view="report";render();window.scrollTo(0,0);};var t=$("notes");t.oninput=function(){data.notes=t.value;save();};}
 
 /* ============ SETTINGS ============ */
@@ -637,10 +641,12 @@ function fillSample(){
     day++;
     var prog=day/28,before=clamp(rnd(5,8)-prog*2+rnd(-1,1)),after=clamp(before-rnd(2,4));
     var t=new Date(cal);t.setHours(6+rnd(0,2),rnd(0,59));
-    var type=Math.random()<0.25?"short":"full",rounds=type==="short"?2:3,holds=[];
-    for(var r=0;r<rounds;r++)holds.push(rnd(40,75)+Math.round(prog*40)+r*rnd(5,15));
-    data.sessions.push({id:uid(),date:t.toISOString(),type:type,completed:true,counted:true,programmeDay:day,before:before,after:after,holds:holds,
-      mood:MOODS.filter(function(){return Math.random()<0.25;}).slice(0,3),reflection:pick(refl),bodyScanDone:day>7&&Math.random()<0.7});
+    var type=Math.random()<0.25?"short":"full",br=day>=22?40:30,rounds=type==="short"?2:(day>=22?4:3),holds=[],capped=[];
+    for(var r=0;r<rounds;r++){var hv=rnd(40,75)+Math.round(prog*40)+r*rnd(5,15),cp=hv>=150&&Math.random()<0.5;holds.push(cp?210:hv);capped.push(cp);}
+    var it=Math.random()<0.8?"done":"skipped";
+    data.sessions.push({id:uid(),date:t.toISOString(),type:type,completed:true,counted:true,programmeDay:day,before:before,after:after,holds:holds,capped:capped,breaths:br,rounds:rounds,squeeze:day>=15&&Math.random()<0.3,intention:it,intentionText:it==="done"&&Math.random()<0.4?pick(["Stay patient in the meeting","Walk after lunch","Listen before answering","Two minutes in the cold"]):"",
+      mood:MOODS.filter(function(){return Math.random()<0.25;}).slice(0,3),reflection:pick(refl)});
+    if(Math.random()<0.72){var cc=new Date(cal);cc.setHours(7,40);data.cold.push({date:cc.toISOString(),seconds:[30,60,90,120][Math.min(3,Math.floor((day-1)/7))]});}
     if(Math.random()<0.1){var t2=new Date(t);t2.setHours(18);data.sessions.push({id:uid(),date:t2.toISOString(),type:"short",completed:Math.random()<0.5,counted:false,programmeDay:day,before:rnd(4,7),after:null,holds:[rnd(30,60)],mood:[],reflection:"",bodyScanDone:false});}
     if(day>14){var m=new Date(cal);m.setHours(12,30);var sb=rnd(4,8);data.sighs.push({id:uid(),date:m.toISOString(),minutes:5,before:sb,after:clamp(sb-rnd(1,3)),trigger:"",scheduled:true});
       if(Math.random()<0.5){var od=new Date(cal);od.setHours(rnd(9,17));var ob=rnd(5,9);data.sighs.push({id:uid(),date:od.toISOString(),minutes:pick([1,2,3]),before:ob,after:clamp(ob-rnd(1,3)),trigger:pick(SIGH_TAGS),scheduled:false});}}
@@ -652,7 +658,7 @@ function fillSample(){
   var lastD=new Date(lastSessionDate()),y=new Date(now);y.setDate(y.getDate()-1);
   var shift=daysBetween(lastD,y)*86400000;
   if(shift){var mv=function(o){if(o&&o.date)o.date=new Date(new Date(o.date).getTime()+shift).toISOString();};
-    data.sessions.forEach(mv);data.sighs.forEach(mv);data.weekly.forEach(mv);data.evenings.forEach(mv);mv(data.baseline);data.meta.startedAt=data.baseline.date;}
+    data.sessions.forEach(mv);data.sighs.forEach(mv);data.weekly.forEach(mv);data.evenings.forEach(mv);data.cold.forEach(mv);mv(data.baseline);data.meta.startedAt=data.baseline.date;}
   save();
 }
 
@@ -882,7 +888,8 @@ function reviewHTML(){
   h+='</table>'+lines+'</div>';
   var comp=data.sessions.filter(function(s){return s.completed;}),full=comp.filter(function(s){return s.type==="full";}).length;
   var drill=data.sighs.filter(function(x){return x.scheduled&&!x.sub;}).length,subs=data.sighs.filter(function(x){return x.sub;}).length,od=data.sighs.filter(function(x){return !x.scheduled;}).length;
-  h+='<div class="card"><p>You completed '+comp.length+' sessions ('+full+' full, '+(comp.length-full)+' short), the midday drill '+drill+' times, and used the sigh tool on demand '+od+' times.'+(subs?' You also did '+subs+' sigh day'+(subs>1?'s':'')+' when you couldn\'t lie down.':'')+'</p></div>';
+  h+='<div class="card"><p>You completed '+comp.length+' sessions ('+full+' full, '+(comp.length-full)+' short), the midday drill '+drill+' times, and used the sigh tool on demand '+od+' times.'+(subs?' You also did '+subs+' sigh day'+(subs>1?'s':'')+' when you couldn\'t lie down.':'')+'</p>'+
+    '<p>Cold showers: '+coldDays()+' days (target 5 a week).</p><p>Intention: '+intentionCount().done+' of '+intentionCount().of+' sessions.</p></div>';
   h+='<p>Let your own numbers decide how to continue.</p>'+modeButtons()+'<button class="btn sec" id="rvLater">Later</button>';
   return h;
 }
@@ -1057,7 +1064,7 @@ function bindSettings2(){
 }
 
 /* ============ PHASE 3: PROGRESS ============ */
-var COLORS={sleep:"#7fd6ff",irritability:"#ff9f7f",switchOff:"#b7f27f",stress:"#f5d76e",before:"#e7a35d",after:"#5fd3bf",full:"#5fd3bf",short:"#2b8c7e",drill:"#b39ddb",od:"#f5d76e",early:"#5fd3bf",midway:"#f5d76e",late:"#ff8a7a",sig:"#7fd6ff"};
+var COLORS={sleep:"#7fd6ff",irritability:"#ff9f7f",switchOff:"#b7f27f",stress:"#f5d76e",before:"#e7a35d",after:"#5fd3bf",full:"#5fd3bf",short:"#2b8c7e",drill:"#b39ddb",od:"#f5d76e",early:"#5fd3bf",midway:"#f5d76e",late:"#ff8a7a",sig:"#7fd6ff",cold:"#8fa8ff"};
 function progDayAt(date){var t=new Date(date).getTime();return data.sessions.filter(function(s){return s.counted&&new Date(s.date).getTime()<=t;}).length;}
 function weekAt(date){return weekOf(Math.max(1,progDayAt(date)));}
 function curWeek(){return weekOf(Math.max(1,countedCount()));}
@@ -1092,7 +1099,7 @@ function progressHTML(){
   } else h+='<div class="card"><h3>Your four numbers</h3><p class="dim">Not enough data yet — this fills in after your first 7 sessions.</p></div>';
   var hasBA=data.sessions.some(function(s){return s.completed&&s.before!=null&&s.after!=null;});
   h+=hasBA?chartBox("ch2","Morning sessions","The gap shows the session's immediate effect. A falling 'before' bar over the weeks is the bigger sign.",[["Before",COLORS.before],["After",COLORS.after]]):'<div class="card"><h3>Morning sessions</h3>'+emptyMsg(1)+'</div>';
-  h+=n?chartBox("ch3","Consistency","Showing up matters more than the length of the session.",[["Full",COLORS.full],["Short",COLORS.short],["Midday drill",COLORS.drill],["On-demand sigh",COLORS.od]]):'<div class="card"><h3>Consistency</h3>'+emptyMsg(1)+'</div>';
+  h+=n?chartBox("ch3","Consistency","Showing up matters more than the length of the session. Cold target: 5 days a week. Sigh bars are extras, not part of the method.",[["Full",COLORS.full],["Short",COLORS.short],["Cold",COLORS.cold],["Midday drill (extra)",COLORS.drill],["On-demand sigh (extra)",COLORS.od]]):'<div class="card"><h3>Consistency</h3>'+emptyMsg(1)+'</div>';
   var od=data.sighs.filter(function(s){return !s.scheduled;});
   if(od.length){
     var ba=od.filter(function(s){return s.before!=null&&s.after!=null;}),avg=function(k){return ba.length?(ba.reduce(function(a,s){return a+(+s[k]);},0)/ba.length).toFixed(1):"–";};
@@ -1105,7 +1112,7 @@ function progressHTML(){
   } else h+=data.evenings.length?chartBox("ch5","Noticing","The goal is moving from 'too late' to 'early'.",[["Early",COLORS.early],["Midway",COLORS.midway],["Too late",COLORS.late],["Signal noticed",COLORS.sig,1]]):'<div class="card"><h3>Noticing</h3>'+emptyMsg(4)+'</div>';
   if(data.settings.showHolds){
     var hs=data.sessions.filter(function(s){return s.holds&&s.holds.length;});
-    h+=hs.length?chartBox("ch6","Hold times","For interest only — not a goal."):'<div class="card"><h3>Hold times</h3>'+emptyMsg(1)+'<p class="dim">For interest only — not a goal.</p></div>';
+    h+=hs.length?chartBox("ch6","Hold times","For interest only — not a goal. Red dots: a hold that reached your firm stop."):'<div class="card"><h3>Hold times</h3>'+emptyMsg(1)+'<p class="dim">For interest only — not a goal.</p></div>';
   }
   h+='<button class="btn sec" id="viewReport">View report</button>';
   return h;
@@ -1136,12 +1143,13 @@ function drawCharts(){
     W=weeksRange();var rows=W.map(function(w){
       var cs=data.sessions.filter(function(s){return s.counted&&weekOf(Math.max(1,s.programmeDay))===w;});
       var sg=data.sighs.filter(function(s){return weekAt(s.date)===w;});
-      return [cs.filter(function(s){return s.type==="full";}).length,cs.filter(function(s){return s.type==="short";}).length,sg.filter(function(s){return s.scheduled&&!s.sub;}).length,sg.filter(function(s){return !s.scheduled;}).length];});
-    var mx=Math.max(7,Math.max.apply(null,rows.map(function(r){return Math.max(r[0]+r[1],r[2],r[3]);})));
+      var cd=(data.cold||[]).filter(function(c){return weekAt(c.date)===w;}).length;
+      return [cs.filter(function(s){return s.type==="full";}).length,cs.filter(function(s){return s.type==="short";}).length,sg.filter(function(s){return s.scheduled&&!s.sub;}).length,sg.filter(function(s){return !s.scheduled;}).length,cd];});
+    var mx=Math.max(7,Math.max.apply(null,rows.map(function(r){return Math.max(r[0]+r[1],r[2],r[3],r[4]);})));
     a=axes(g,W.map(function(w){return "W"+w;}),mx,"count","week",Math.min(7,mx));
-    rows.forEach(function(r,i){var cx=g.L+a.pw*(i+0.5)/W.length,bwid=Math.min(16,a.pw/W.length/3.4),y0=g.T+a.ph;
+    rows.forEach(function(r,i){var cx=g.L+a.pw*(i+0.5)/W.length,bwid=Math.min(14,a.pw/W.length/4.4),y0=g.T+a.ph;
       function bar(xo,v,base,col){var hh=a.ph*v/mx;g.x.fillStyle=col;g.x.fillRect(cx+xo,base-hh,bwid-1,hh);return base-hh;}
-      var top=bar(-1.5*bwid,r[0],y0,COLORS.full);bar(-1.5*bwid,r[1],top,COLORS.short);bar(-0.5*bwid,r[2],y0,COLORS.drill);bar(0.5*bwid,r[3],y0,COLORS.od);});
+      var top=bar(-2*bwid,r[0],y0,COLORS.full);bar(-2*bwid,r[1],top,COLORS.short);bar(-1*bwid,r[4],y0,COLORS.cold);bar(0.15*bwid,r[2],y0,COLORS.drill);bar(1.15*bwid,r[3],y0,COLORS.od);});
   }
   if((g=setupCanvas("ch4"))){
     W=weeksRange();var c4=W.map(function(w){return data.sighs.filter(function(s){return !s.scheduled&&weekAt(s.date)===w;}).length;});
@@ -1169,6 +1177,7 @@ function drawCharts(){
     var av=hs.map(function(s){return s.holds.reduce(function(t,v){return t+v;},0)/s.holds.length;}),m6=Math.max(60,Math.ceil(Math.max.apply(null,av)/30)*30);
     a=axes(g,hs.map(function(s){return String(s.programmeDay);}),m6,"sec","session (day)",Math.min(6,m6/30));
     g.x.strokeStyle=COLORS.after;g.x.lineWidth=2;g.x.beginPath();av.forEach(function(v,i){var px=g.L+a.pw*(i+0.5)/av.length,py=g.T+a.ph-a.ph*v/m6;if(i)g.x.lineTo(px,py);else g.x.moveTo(px,py);});g.x.stroke();
+    g.x.fillStyle=COLORS.late;hs.forEach(function(s,i){if(s.capped&&s.capped.some(Boolean)){var px=g.L+a.pw*(i+0.5)/av.length,py=g.T+a.ph-a.ph*av[i]/m6;g.x.beginPath();g.x.arc(px,py,4.5,0,7);g.x.fill();}});
   }
   }catch(e){if(window.console)console.error(e);}
 }
@@ -1185,19 +1194,19 @@ function reportData(){
   var drills=data.sighs.filter(function(s){return s.scheduled&&!s.sub;}).length,subs=data.sighs.filter(function(s){return s.sub;}).length,od=data.sighs.filter(function(s){return !s.scheduled;}).length;
   function top(arr){var c={};arr.forEach(function(v){if(v)c[v]=(c[v]||0)+1;});return Object.keys(c).sort(function(p,q){return c[q]-c[p];}).slice(0,3).map(function(k){return k+" ("+c[k]+")";});}
   var moods=top([].concat.apply([],data.sessions.map(function(s){return s.mood||[];}))),trig=top(data.sighs.filter(function(s){return !s.scheduled;}).map(function(s){return s.trigger;}));
-  return {lw:lw,lines:lines,comp:comp.length,full:full,short:comp.length-full,counted:countedCount(),drills:drills,subs:subs,od:od,ev:data.evenings.length,moods:moods,trig:trig};
+  return {lw:lw,lines:lines,comp:comp.length,full:full,short:comp.length-full,counted:countedCount(),drills:drills,subs:subs,od:od,ev:data.evenings.length,moods:moods,trig:trig,cold:coldDays(),intent:intentionCount()};
 }
 function reportText(){
   var r=reportData(),t=["Breathe — report ("+dayKey()+")",""];
   t.push(r.lw?"Day 0 vs week "+r.lw.week+" check-in:":"No weekly check-in yet.");r.lines.forEach(function(l){t.push("- "+l);});
-  t.push("","Sessions completed: "+r.comp+" ("+r.full+" full, "+r.short+" short); counted days: "+r.counted,"Midday drills: "+r.drills,"Sigh days: "+r.subs,"On-demand sighs: "+r.od,"Evening check-ins: "+r.ev);
+  t.push("","Sessions completed: "+r.comp+" ("+r.full+" full, "+r.short+" short); counted days: "+r.counted,"Cold showers: "+r.cold+" days (target 5 a week)","Intention: "+r.intent.done+" of "+r.intent.of+" sessions","Extras — midday drills: "+r.drills,"Sigh days: "+r.subs,"On-demand sighs: "+r.od,"Evening check-ins: "+r.ev);
   t.push("","Most frequent moods: "+(r.moods.join(", ")||"none yet"),"Most frequent stress triggers: "+(r.trig.join(", ")||"none yet"));
   return t.join("\n");
 }
 function reportHTML(){
   var r=reportData(),h='<div class="hdr"><h1>Report</h1><button class="btn sec" style="width:auto" id="rpBack">Back</button></div>';
   h+='<div class="card"><h3>'+(r.lw?'Day 0 vs week '+r.lw.week+' check-in':'Day 0 vs latest check-in')+'</h3>'+(r.lines.length?r.lines.map(function(l){return '<p>'+esc(l)+'</p>';}).join(""):emptyMsg(1))+'</div>';
-  h+='<div class="card"><h3>Totals</h3><p>Sessions completed: '+r.comp+' ('+r.full+' full, '+r.short+' short)<br>Counted days: '+r.counted+'<br>Midday drills: '+r.drills+'<br>Sigh days: '+r.subs+'<br>On-demand sighs: '+r.od+'<br>Evening check-ins: '+r.ev+'</p></div>';
+  h+='<div class="card"><h3>Totals</h3><p>Sessions completed: '+r.comp+' ('+r.full+' full, '+r.short+' short)<br>Counted days: '+r.counted+'<br>Cold showers: '+r.cold+' days (target 5 a week)<br>Intention: '+r.intent.done+' of '+r.intent.of+' sessions</p><h3>Extras</h3><p>Midday drills: '+r.drills+'<br>Sigh days: '+r.subs+'<br>On-demand sighs: '+r.od+'<br>Evening check-ins: '+r.ev+'</p></div>';
   h+='<div class="card"><h3>Most frequent moods</h3><p>'+esc(r.moods.join(", ")||"None yet")+'</p><h3>Most frequent stress triggers</h3><p>'+esc(r.trig.join(", ")||"None yet")+'</p></div>';
   h+='<button class="btn" id="rpCopy">Copy report as text</button><p class="dim" id="rpMsg"></p>';
   return h;

@@ -1,4 +1,4 @@
-const CACHE = "breathe-v8";
+const CACHE = "breathe-v9";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-maskable-512.png", "./icons/apple-touch-icon.png", "./icons/favicon.svg", "./icons/favicon-32.png","./audio/two-more.mp3","./audio/last-breath.mp3","./audio/let-go-hold.mp3","./audio/breathe-in-ready.mp3","./audio/breathe-in-hold.mp3","./audio/release.mp3","./audio/round-two.mp3","./audio/round-three.mp3","./audio/last-round.mp3","./audio/body-scan.mp3","./audio/sigh.mp3"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
