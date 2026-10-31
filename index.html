@@ -215,7 +215,7 @@ function tone(f1,f2,dur,vol){
 function breathTone(inhale,dur){if(!data.settings.breathTones)return;if(inhale)tone(220,330,dur*0.95,0.06);else tone(330,200,dur*0.95,0.05);}
 var CHIMES={"Two more.":[660],"Last breath. Let go.":[660,880],"Let go and hold.":[523,392],"Breathe in whenever you're ready.":[440],"Breathe in. Hold.":[392,523,659],"Release.":[659,392],"Round two.":[523,523],"Round three.":[523,523,523],"Last round.":[784,659,523],"Breathe in through the nose.":[523],"Last one — all the way in…":[660,880],"…and let it go.":[523,392],"Hold.":[392],"Breathe in now.":[440,660],"Release, and relax everything.":[659,392]};
 function chime(text){var seq=CHIMES[text]||[600];seq.forEach(function(f,i){setTimeout(function(){tone(f,f,0.6,0.09);},i*280);});}
-var VOICE_CLIPS={"Two more.": "two-more", "Last breath. Let go.": "last-breath", "Let go and hold.": "let-go-hold", "Breathe in whenever you're ready.": "breathe-in-ready", "Breathe in. Hold.": "breathe-in-hold", "Release.": "release", "Round two.": "round-two", "Round three.": "round-three", "Last round.": "last-round", "Notice where you feel calm. Notice where tension is still sitting. Don't fix anything, just notice.": "body-scan", "In… and a little more… now slowly out.": "sigh", "Breathe in through the nose.": "nose", "Last one — all the way in…": "last-one", "…and let it go.": "let-it-go", "Hold.": "hold", "Breathe in now.": "breathe-in-now", "Breathe in. Hold — and gently squeeze, from the pelvic floor up to your head. Keep everything else relaxed.": "squeeze", "Release, and relax everything.": "release-relax", "Stay where you are. Bring one thought to mind for today — something you mean to do, or how you want to feel.": "intention-1", "Hold it, and notice how your body responds.": "intention-2", "If something in you resists, keep breathing steadily until body and mind line up.": "intention-3"};
+var VOICE_CLIPS={"Two more.": "two-more", "Breathe in whenever you're ready.": "breathe-in-ready", "Breathe in. Hold.": "breathe-in-hold", "Release.": "release", "Round two.": "round-two", "Round three.": "round-three", "Last round.": "last-round", "In… and a little more… now slowly out.": "sigh", "Breathe in through the nose.": "nose", "Last one — all the way in…": "last-one", "…and let it go.": "let-it-go", "Hold.": "hold", "Breathe in now.": "breathe-in-now", "Breathe in. Hold — and gently squeeze, from the pelvic floor up to your head. Keep everything else relaxed.": "squeeze", "Release, and relax everything.": "release-relax", "Stay where you are. Bring one thought to mind for today — something you mean to do, or how you want to feel.": "intention-1", "Hold it, and notice how your body responds.": "intention-2", "If something in you resists, keep breathing steadily until body and mind line up.": "intention-3"};
 var clipEls={},curClip=null,maleVoice=null;
 function preloadClips(){try{Object.keys(VOICE_CLIPS).forEach(function(t){if(clipEls[t])return;var a=new Audio("audio/"+VOICE_CLIPS[t]+".mp3");a.preload="auto";a.volume=0.9;a._ok=true;a.addEventListener("error",function(){a._ok=false;});clipEls[t]=a;});}catch(e){}}
 function unlockClips(){preloadClips();Object.keys(clipEls).forEach(function(t){var a=clipEls[t];try{a.muted=true;var p=a.play();if(p&&p.then)p.then(function(){a.pause();a.currentTime=0;a.muted=false;}).catch(function(){a.muted=false;});else{a.pause();a.muted=false;}}catch(e){a.muted=false;}});}
@@ -708,7 +708,7 @@ function startStep(){
   $("go").onclick=function(){
     ac();
     try{if(window.speechSynthesis){var u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u);}}catch(e){}
-    unlockClips();S.running=true;lockOn();$("stopBtn").style.display="block";S.round=1;if(S.nose){say("Breathe in through the nose.");T(breathsPhase,2500);}else breathsPhase();
+    unlockClips();S.running=true;lockOn();$("stopBtn").style.display="block";S.round=1;if(S.nose){say("Breathe in through the nose.");T(breathsPhase,3200);}else breathsPhase();
   };
 }
 $("stopBtn").onclick=function(e){e.stopPropagation();if(S&&S.sigh)sighStop();else stopSession();};
@@ -730,13 +730,14 @@ function breathsPhase(){
   function breath(){
     if(!S||!S.running)return;
     i++;c.textContent=i;
-    var inS=breathIn(), dur=inS/speed();
+    var B=S.breaths, inS=breathIn(), last=(i===B);
+    /* The last breath is fuller and slower, so "Last one — all the way in…" (≈3 s) and "…and let it go." (≈1.7 s) finish before the next cue. */
+    var inT=last?Math.max(inS,4):inS, outT=last?Math.max(inS,2.8):inS, dur=inT/speed();
     c.style.transitionDuration=dur+"s";c.style.transform="scale(2.3)";breathTone(true,dur);
-    var B=S.breaths;
     if(i===B-2)say("Two more.");
     if(i===B)say("Last one — all the way in…");
-    T(function(){c.style.transform="scale(1)";breathTone(false,dur);if(i===B)say("…and let it go.");
-      T(function(){if(i<B)breath();else retention();},inS*1000);},inS*1000);
+    T(function(){var d2=outT/speed();c.style.transitionDuration=d2+"s";c.style.transform="scale(1)";breathTone(false,d2);if(last)say("…and let it go.");
+      T(function(){if(i<B)breath();else retention();},outT*1000);},inT*1000);
   }
   T(breath,600);
 }
@@ -751,7 +752,7 @@ function retention(){
   function end(capped){
     if(ended)return;ended=true;tz.onclick=null;cancelAnimationFrame(S.raf);
     S.holds.push(capped?H.stop:Math.round((performance.now()-t0)/1000*speed()));S.capped.push(!!capped);
-    tz.style.display="none";recovery();
+    tz.style.display="none";recovery(!!capped);
   }
   function tick(){
     if(!S||!S.running||ended)return;
@@ -765,9 +766,10 @@ function retention(){
   tz.onclick=function(){if(armed)end(false);};
 }
 var SQUEEZE_LINE="Breathe in. Hold — and gently squeeze, from the pelvic floor up to your head. Keep everything else relaxed.";
-function recovery(){
+function recovery(quiet){
   var sq=S.squeeze&&S.round===2;
-  if(sq)say(SQUEEZE_LINE);else say("Breathe in. Hold.");
+  /* quiet: after the firm stop, "Breathe in now." has just been said; don't cut it off. */
+  if(sq){if(quiet)T(function(){say(SQUEEZE_LINE);},2400);else say(SQUEEZE_LINE);}else if(!quiet)say("Breathe in. Hold.");
   var left=15;
   sessShow('<p class="cue" style="margin-top:60px">'+(sq?esc("Big breath in. Hold — and gently squeeze, from the pelvic floor up to your head. Keep everything else relaxed."):'Big breath in. Hold.')+'</p><div class="circleWrap"><div class="circle" id="circ" style="transform:scale(2.3)">15</div></div>',true);
   function step(){
@@ -775,7 +777,7 @@ function recovery(){
     left--;if($("circ"))$("circ").textContent=left;
     if(left>0)T(step,1000);
     else{say(sq?"Release, and relax everything.":"Release.");var c=$("circ");if(c){c.style.transitionDuration=(2/speed())+"s";c.style.transform="scale(1)";}
-      if(S.round>=S.rounds)T(intentionStep,2500);else T(pause,1500);}
+      if(S.round>=S.rounds)T(intentionStep,2500);else T(pause,sq?4500:1500);}
   }
   T(step,1000);
 }
