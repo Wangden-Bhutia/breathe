@@ -153,7 +153,7 @@ function defaultData(){
     settings:{pace:"normal",breathSec:null,breathTones:true,phaseChimes:true,voiceCues:true,showHolds:false,extraRound:false,bodyScan:false,morningTime:null,middayTime:null,eveningTime:null,holdPrompt:150,holdStop:210,squeeze:false,coldGentle:false,maintRounds:4,maintBreaths:40},
     meta:{startedAt:null,lastFullSafety:null,signal:[],review28Done:false,maintenanceMode:null},
     baseline:{date:null,sleep:null,irritability:null,switchOff:null,stress:null},
-    sessions:[],sighs:[],weekly:[],evenings:[],notes:""
+    sessions:[],sighs:[],weekly:[],evenings:[],cold:[],notes:""
   };
 }
 function merge(d){
@@ -163,7 +163,7 @@ function merge(d){
   out.settings=Object.assign({},def.settings,d.settings||{});
   out.meta=Object.assign({},def.meta,d.meta||{});
   out.baseline=Object.assign({},def.baseline,d.baseline||{});
-  ["sessions","sighs","weekly","evenings"].forEach(function(k){if(!Array.isArray(out[k]))out[k]=[];});
+  ["sessions","sighs","weekly","evenings","cold"].forEach(function(k){if(!Array.isArray(out[k]))out[k]=[];});
   if(!Array.isArray(out.meta.signal)) out.meta.signal=[];
   if(typeof out.notes!=="string") out.notes="";
   return out;
@@ -368,6 +368,7 @@ function practiceHTML(){
     h+='<h2>Maintenance</h2>';
   }
   var th=themeFor(done?Math.max(0,n-1):n),tn=th[0].replace(/^Week \d+ · /,"");h+='<p class="dim" style="margin-top:0">'+(tn==="Maintenance"?'':esc(tn)+' — ')+esc(th[1])+'</p>';
+  var DZ=dose("full");h+='<p style="margin:4px 0 0"><strong>'+DZ.rounds+' rounds × '+DZ.breaths+' breaths</strong>'+(DZ.nose?' · through the nose':'')+'</p>';
   if(n>=28&&mm==="3-4")h+='<p>This week: '+thisWeekCount()+' of 3–4</p>';
   if(done){
     var td=data.sessions.filter(function(x){return x.counted&&dayKey(x.date)===dayKey();})[0];
@@ -378,20 +379,19 @@ function practiceHTML(){
   if(sighOnly)h+=middayCardHTML();
   var prim=!done&&!subToday&&!sighOnly;
   h+='<button class="btn'+(prim?'':' sec')+'" id="goFull">Full session (about '+estimate("full")+')</button>';
-  h+='<button class="btn sec" id="goShort">Short session (about '+estimate("short")+')</button>';
-  if(!done&&!subToday)h+='<button class="btn sec" id="goSub">Can\'t lie down today? Do a 5-minute sigh session</button>';
+  h+='<button class="btn sec" id="goShort">Short session — lighter than the method (about '+estimate("short")+')</button>';
   h+='</div>';
-  /* ---- the rest of the day ---- */
-  if(n>=14&&!sighOnly)h+=middayCardHTML();
-  if(n>=14)h+='<button class="btn sec" id="goSigh">Sigh — calm in a minute</button>';
-  if(n>=21)h+=eveningCardHTML();
+  /* ---- cold (the book's second pillar) ---- */
+  h+=coldCardHTML();
+  /* ---- extras: not part of the method ---- */
+  h+=extrasCardHTML(n,done,subToday,sighOnly);
   /* ---- one-off cards ---- */
   if(n>=28&&data.meta.review28Done&&!data.meta.seen.maint)h+='<div class="card"><p>Four weeks done. From here, the practice is yours.</p><button class="btn sec" id="maintOk">OK</button></div>';
   if(n>=7&&!data.meta.seen.w2)h+='<div class="card"><p>Pick your practice time. A fixed time makes this automatic.</p><input type="time" id="mTime" value="'+esc(data.settings.morningTime||"07:00")+'"><button class="btn" id="mTimeSave">Save</button></div>';
   h+=installCardHTML();
   h+=reminderBanners();
   h+='<p class="dim">The practice stays the same each day. What changes is what you notice.</p>';
-  h+='<div class="badges"><span class="badge">10–15 min daily</span><span class="badge">Empty stomach, within an hour of waking</span><span class="badge">No equipment</span></div>';
+  h+='<div class="badges"><span class="badge">'+(sessDay()>=22?'About 20 min':'10–15 min daily')+'</span><span class="badge">Empty stomach, within an hour of waking</span><span class="badge">No equipment</span></div>';
   return h;
 }
 /* Session length from the current settings: 30 breaths + a 1–2 min hold + 15 s recovery + 10 s pause per round, plus check-ins. */
@@ -415,12 +415,38 @@ function dose(type){
 /* Hold limits: the user always ends the hold; prompt 1:30–3:00, firm stop 2:00–3:30 (never later), stop at least 30 s after the prompt. */
 var HOLD_STOP_MAX=210;
 function holdTimes(){var st=data.settings,p=Math.min(180,Math.max(90,+st.holdPrompt||150)),x=Math.min(HOLD_STOP_MAX,Math.max(120,+st.holdStop||210));if(x<p+30){x=Math.min(HOLD_STOP_MAX,p+30);if(x<p+30)p=x-30;}return {prompt:p,stop:x};}
+/* ============ COLD (book, ch. 3: 30 s → 1 min → 1.5 min → 2 min, at least 5 days a week) ============ */
+function coldSeconds(){var w=Math.min(4,weekOf(sessDay()));return data.settings.coldGentle?[15,45,75,120][w-1]:[30,60,90,120][w-1];}
+function fmtDur(sec){return sec<60?sec+" s":(sec%60?Math.floor(sec/60)+" min "+(sec%60)+" s":(sec/60)+" min");}
+function coldToday(){return (data.cold||[]).some(function(c){return dayKey(c.date)===dayKey();});}
+function coldThisWeek(){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return (data.cold||[]).filter(function(c){return new Date(c.date)>=d;}).length;}
+function coldCardHTML(){
+  var cs=coldSeconds(),dn=coldToday();
+  return '<div class="card" id="coldCard"><div class="hdr"><h3 style="margin:0">'+(dn?'✓ Cold done':'Cold shower · '+esc(fmtDur(cs))+' this week')+'</h3>'+
+    (dn?'<button class="btn sec" style="width:auto;margin:0" id="coldUndo">Undo</button>':'<button class="btn" style="width:auto;margin:0" id="coldDone">Done</button>')+'</div>'+
+    '<p class="dim" style="margin:8px 0 0">End a warm shower with cold. Never do the breathing in the shower.</p>'+
+    '<p class="dim" style="margin:4px 0 0">This week: '+coldThisWeek()+' of 5 · optional</p></div>';
+}
+var extrasOpen=false;
+function extrasCardHTML(n,done,subToday,sighOnly){
+  var inner='';
+  if(!done&&!subToday)inner+='<button class="btn sec" id="goSub">Can\'t lie down today? Do a 5-minute sigh session</button>';
+  if(n>=14&&!sighOnly)inner+=middayCardHTML();
+  if(n>=14)inner+='<button class="btn sec" id="goSigh">Sigh — calm in a minute</button>';
+  if(n>=21)inner+=eveningCardHTML();
+  if(!inner)return '';
+  return '<div class="card" id="extrasCard"><div class="hdr"><div><h3 style="margin:0">Extras</h3><div class="dim" style="font-size:15px">Not part of the Wim Hof method</div></div><button class="btn sec" style="width:auto;margin:0" id="extrasTog">'+(extrasOpen?'Hide':'Open')+'</button></div>'+
+    (extrasOpen?'<div style="margin-top:10px">'+inner+'</div>':'')+'</div>';
+}
 function subSighToday(){return todayHas(data.sighs,function(x){return x.sub;});}
 function bindPractice(){
   $("gear").onclick=function(){view="settings";render();window.scrollTo(0,0);};
   $("goFull").onclick=function(){startFlow("full");};
   $("goShort").onclick=function(){startFlow("short");};
   var gs=$("goSub");if(gs)gs.onclick=function(){startSigh(false,5,true);};
+  var et=$("extrasTog");if(et)et.onclick=function(){extrasOpen=!extrasOpen;if(!extrasOpen)eveningOpen=false;render();};
+  var cd=$("coldDone");if(cd)cd.onclick=function(){if(!Array.isArray(data.cold))data.cold=[];data.cold.push({date:new Date().toISOString(),seconds:coldSeconds()});save();render();};
+  var cu=$("coldUndo");if(cu)cu.onclick=function(){data.cold=(data.cold||[]).filter(function(c){return dayKey(c.date)!==dayKey();});save();render();};
   bindPhase2Home();
   bindInstall();
 }
@@ -791,7 +817,7 @@ function finishSession(){
 
 /* ============ PHASE 2 ============ */
 if(!data.meta.seen||typeof data.meta.seen!=="object")data.meta.seen={};
-var THEMES=[["Week 1 · Foundation","Learn the rhythm. Don't chase hold times."],["Week 2 · Consistency","Same time, same place. Let the habit do the work."],["Week 3 · A tool for the day","Calm in a quiet room is practice. Calm in a busy day is the skill."],["Week 4 · Integration","Notice stress earlier, and reach for the breath sooner."]];
+var THEMES=[["Week 1 · Foundation","Learn the rhythm. Don't chase hold times."],["Week 2 · Consistency","Same time, same place. Let the habit do the work."],["Week 3 · Deepen","Let the holds come to you. Don't go looking for them."],["Week 4 · The full practice","Four rounds of forty, as Wim Hof describes it."]];
 var SIGNALS=["Jaw clenching","Tight shoulders","Holding my breath","Shallow breathing","Irritability","Stomach tension","Racing thoughts","Restless hands or legs"];
 var SIGH_TAGS=["Work","People","Traffic","Thoughts","Other"];
 var BODY_SCAN="Notice where you feel calm. Notice where tension is still sitting. Don't fix anything, just notice.";
@@ -863,7 +889,7 @@ function bindReview(){$("rvLater").onclick=function(){reviewLater=true;view=null
 /* early-warning signal */
 function signalHTML(){
   var cur=data.meta.signal||[],other=cur.filter(function(x){return SIGNALS.indexOf(x)<0;})[0];
-  var h='<h1>Your early-warning signal</h1><p>Stress usually shows up in the body before you notice it in your mind. What do you notice first? Pick one or two.</p><div class="chips">';
+  var h='<h1>Your early-warning signal <span class="dim" style="font-size:18px;font-weight:400">(Extra)</span></h1><p>Stress usually shows up in the body before you notice it in your mind. What do you notice first? Pick one or two.</p><div class="chips">';
   SIGNALS.concat(["Other"]).forEach(function(x){var on=x==="Other"?!!other:cur.indexOf(x)>=0;h+='<button class="chip sig'+(on?' on':'')+'" data-s="'+esc(x)+'">'+esc(x)+'</button>';});
   h+='</div><input type="text" id="sigOther" placeholder="Other" value="'+esc(other&&other!=="Other"?other:"")+'" style="display:'+(other?'block':'none')+'">';
   h+='<button class="btn" id="sigSave">Save</button><button class="btn sec" id="sigLater">Later</button>';
@@ -992,6 +1018,11 @@ function settings2HTML(){
      '<div class="hdr" style="margin-top:8px"><span>Hold: firm "Breathe in now" at</span><strong id="hsV">'+fmtSec(H.stop)+'</strong></div>'+
      '<input type="range" id="hsIn" min="120" max="'+HOLD_STOP_MAX+'" step="15" value="'+H.stop+'" aria-label="Firm stop at">'+
      '<p class="dim" style="font-size:15px">You always end the hold yourself, when you feel the urge to breathe. These only set when the app reminds you. The 3:30 ceiling is the limit used in the 2026 clinical trial.</p></div>';
+  if(n>=28){var mr=(+s.maintRounds===3)?3:4,mb=+s.maintBreaths||40;
+    h+='<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div>Rounds and breaths</div><p class="dim" style="font-size:15px;margin:4px 0 8px">The book\'s range is 3–4 rounds of 30–40 breaths.</p>'+
+       '<div class="row" style="align-items:center"><span>Rounds</span><div class="seg" style="flex:none">'+[3,4].map(function(v){return '<button class="mR'+(mr===v?' on':'')+'" data-v="'+v+'">'+v+'</button>';}).join("")+'</div></div>'+
+       '<div class="row" style="align-items:center;margin-top:8px"><span>Breaths</span><div class="seg" style="flex:none">'+[30,35,40].map(function(v){return '<button class="mB'+(mb===v?' on':'')+'" data-v="'+v+'">'+v+'</button>';}).join("")+'</div></div></div>';}
+  h+='<div class="toggle"><span>Cold: gentler start<br><span class="dim" style="font-size:15px">15 s in week 1, building more slowly (45 s, 75 s, then 2 min).</span></span>'+swHTML("sColdG",!!s.coldGentle)+'</div>';
   if(n>=7&&n<21)h+='<div class="toggle"><span>Optional 4th round (weeks 2–3)<br><span class="dim" style="font-size:15px">From week 4 there are always 4 rounds.</span></span>'+swHTML("sExtra",s.extraRound)+'</div>';
   if(n>=14)h+='<div class="toggle"><span>Squeeze on the round 2 recovery breath<br><span class="dim" style="font-size:15px">Optional, from the book: tense the pelvic floor and draw the pressure up to the head, everything else relaxed.</span></span>'+swHTML("sSqz",!!s.squeeze)+'</div>';
   if(n>=14)h+='<div class="toggle"><span>Early-warning signal<br><span class="dim" style="font-size:15px">'+esc((data.meta.signal||[]).join(", ")||"Not set")+'</span></span><button class="btn sec" style="width:auto;margin:0" id="sigEdit">Edit</button></div>';
@@ -1007,6 +1038,9 @@ function bindSettings2(){
   var s=data.settings;
   var e=$("sExtra");if(e)e.onclick=function(){s.extraRound=!s.extraRound;save();render();};
   var q=$("sSqz");if(q)q.onclick=function(){s.squeeze=!s.squeeze;save();render();};
+  var cg=$("sColdG");if(cg)cg.onclick=function(){s.coldGentle=!s.coldGentle;save();render();};
+  document.querySelectorAll(".mR").forEach(function(b){b.onclick=function(){s.maintRounds=+b.dataset.v;save();render();};});
+  document.querySelectorAll(".mB").forEach(function(b){b.onclick=function(){s.maintBreaths=+b.dataset.v;save();render();};});
   function holdUI(which){var p=+$("hpIn").value,x=+$("hsIn").value;
     if(x<p+30){if(which==="p")x=Math.min(HOLD_STOP_MAX,p+30);else p=x-30;}
     if(x<p+30)p=x-30;p=Math.max(90,Math.min(180,p));
