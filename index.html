@@ -115,6 +115,7 @@ input[type=range].unset::-moz-range-thumb{opacity:0}
 .gear svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.8}
 .today{border-color:var(--acc)}
 .today h2{margin-top:0}
+.next-line{margin:6px 0;font-size:17px}
 .done-line{font-size:18px}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
 .split div{background:var(--bg2);border-radius:12px;padding:10px;text-align:center}
@@ -456,7 +457,11 @@ function practiceHTML(){
   h+='<div class="card today">';
   var last=lastSessionDate();data.sighs.forEach(function(x){if(x.sub&&(!last||new Date(x.date)>new Date(last)))last=x.date;});
   if(!done&&!subToday&&last&&daysBetween(last,new Date())>=3) h+='<p>Welcome back. Pick up where you left off.</p>';
-  if(n<3||(n===3&&done)){
+  if(n===3&&done){
+    /* Day 3 just finished: a summary instead of three ticked cards */
+    var res=[1,2,3].map(function(d){var x=data.sessions.filter(function(q){return q.counted&&q.programmeDay===d;})[0];return 'Day '+d+': '+(x&&x.before!=null?esc(x.before)+' → '+esc(x.after):'✓');}).join(' · ');
+    h+='<h2>✓ 3-Day Challenge complete</h2><p class="dim" style="margin-top:0">'+res+'</p><p>Three days is a beginning, not a finish line.</p>';
+  } else if(n<3){
     var names=["Breathe & Reset","Breathe & Repeat","Breathe & Continue"];
     h+='<h2>3-Day Challenge</h2>';
     for(var i=0;i<3;i++){
@@ -471,17 +476,17 @@ function practiceHTML(){
     h+='<h2>Maintenance</h2>';
   }
   var th=themeFor(done?Math.max(0,n-1):n),tn=th[0].replace(/^Week \d+ · /,"");h+='<p class="dim" style="margin-top:0">'+(tn==="Maintenance"?'':esc(tn)+' — ')+esc(th[1])+'</p>';
-  var DZ=dose("full");h+='<p style="margin:4px 0 0"><strong>'+DZ.rounds+' rounds × '+DZ.breaths+' breaths</strong>'+(DZ.nose?' · through the nose':'')+'</p>';
+  var DZ=dose("full");if(!done)h+='<p style="margin:4px 0 0"><strong>'+DZ.rounds+' rounds × '+DZ.breaths+' breaths</strong>'+(DZ.nose?' · through the nose':'')+'</p>';
   if(n>=28&&mm==="3-4")h+='<p>This week: '+thisWeekCount()+' of 3–4</p>';
   if(done){
     var td=data.sessions.filter(function(x){return x.counted&&dayKey(x.date)===dayKey();})[0];
-    h+='<p class="done-line">✓ Today\'s session is done'+(td&&td.before!=null?' · '+esc(td.before)+' → '+esc(td.after):'')+'.</p><p class="dim">Extra sessions are logged but don\'t move the programme forward.</p>';
+    h+='<p class="done-line">✓ Today\'s session is done'+(td&&td.before!=null?' · '+esc(td.before)+' → '+esc(td.after):'')+'.</p>'+tomorrowHTML(n)+'<p class="dim">Extra sessions are logged but don\'t move the programme forward.</p>';
   } else if(subToday){
     h+='<p class="done-line">✓ Sigh day logged.</p><p class="dim">It keeps the habit going; the programme day moves on with your next lying-down session.</p>';
   }
   if(sighOnly)h+=middayCardHTML();
   var prim=!done&&!subToday&&!sighOnly;
-  h+='<button class="btn'+(prim?'':' sec')+'" id="goFull">Full session (about '+estimate("full")+')</button>';
+  h+='<button class="btn'+(prim?'':' sec')+'" id="goFull">'+(done?'Extra session (doesn\'t count) — about ':'Full session (about ')+estimate("full")+(done?'':')')+'</button>';
   h+='<button class="btn sec" id="goShort">Short session — lighter than the method (about '+estimate("short")+')</button>';
   h+='</div>';
   /* ---- cold (the book's second pillar) ---- */
@@ -495,6 +500,16 @@ function practiceHTML(){
   h+=reminderBanners();
   h+='<p class="dim">The practice stays the same each day. What changes is what you notice.</p>';
   h+='<div class="badges"><span class="badge">'+(sessDay()>=22?'About 20 min':'10–15 min daily')+'</span><span class="badge">Empty stomach, within an hour of waking</span><span class="badge">No equipment</span></div>';
+  return h;
+}
+/* What the next session will be, shown once today's is done. Mirrors dose(): 3 × 30 in weeks 1–3, 4 × 40 from day 22. */
+function tomorrowHTML(n){
+  var D=n+1;
+  if(D>28)return n===28?'<p class="next-line"><strong>Tomorrow:</strong> maintenance — choose your rounds and breaths in Settings.</p>':'';
+  var W=weekOf(D),R=D>=22?4:((data.settings.extraRound&&W>=2)?4:3),B=D>=22?40:30;
+  var newWeek=(D===8||D===15||D===22)?' ('+esc(THEMES[W-1][0].replace(/^Week \d+ · /,""))+')':'';
+  var h='<p class="next-line"><strong>Tomorrow:</strong> Week '+W+' · Day '+D+newWeek+' — '+R+' rounds × '+B+' breaths'+(D<=14?' · through the nose':'')+'</p>';
+  if(D===22)h+='<p class="next-line">From tomorrow: the full practice, 4 rounds of 40.</p>';
   return h;
 }
 /* Session length from the current settings: 30 breaths + a 1–2 min hold + 15 s recovery + 10 s pause per round, plus check-ins. */
