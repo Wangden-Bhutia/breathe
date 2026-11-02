@@ -115,6 +115,7 @@ input[type=range].unset::-moz-range-thumb{opacity:0}
 .gear svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.8}
 .today{border-color:var(--acc)}
 .today h2{margin-top:0}
+.lgrp{font-size:15px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin:22px 0 4px;font-weight:600}
 .next-line{margin:6px 0;font-size:17px}
 .done-line{font-size:18px}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
@@ -377,6 +378,7 @@ var LEARN=[
 ["What the evidence says",paras("The best-supported effect is short-term. In two trials, healthy young men who had practised the breathing released more adrenaline and had a weaker inflammatory response when injected with a bacterial toxin (Kox et al., 2014; Zwaag et al., 2022). The second trial showed the breathing drives this; cold showers add to it.\nFor everyday stress and mood, the evidence is thin. A 2026 trial of seven weeks' daily practice found no improvement in its main mental-health measure, though the group that added cold showers had less pain and better breathing strength (de Groot et al.). A 2024 review rated the research overall as very low quality (Almahayni & Hammond).\nIn short: a powerful practice that many people find helpful, with real effects on the body — but not a proven treatment for stress, anxiety or illness. If those are persistent, see a doctor."),"evidence"],
 ["Cold showers",paras("The second pillar. End a warm shower with cold water: 30 seconds in week 1, one minute in week 2, a minute and a half in week 3, two minutes in week 4, at least five days a week. Starting with 15 seconds and building more slowly is fine. Feet and legs first, then arms, then the whole body. Never do the breathing exercise in the shower. If you're shivering afterwards, move around to warm up. In one trial, cold added little on its own but strengthened the breathing's effects; in another, only the group that added cold showers showed physical gains."),"cold"],
 ["The intention",paras("The third pillar is the mind. Straight after the breathing, while you're still lying down, the body is calm and alert. Use that minute: bring one thought to mind for the day, notice how your body responds to it, and if something resists, keep breathing steadily until it settles. Over time this sharpens your sense of what's going on inside you."),"intention"],
+["The squeeze (optional, from week 3)",paras("Once the basic practice feels familiar, the book adds one extra step, on the recovery breath of round 2. Breathe in fully and hold. Then gently tense the pelvic floor and let that tension travel up through the middle of your body to your head, keeping everything else relaxed. You should feel a light pressure in your head. As you breathe out, relax everything.\nKeep it gentle — never strain. It is off by default; turn it on in Settings.\nSkip it if you have high blood pressure, a heart condition or an eye condition such as glaucoma: straining like this briefly raises blood pressure. No study has tested the squeeze on its own."),"squeeze"],
 ["Is 3 days enough?",paras("Three days is enough to learn the technique and feel the immediate effect. It is not enough for lasting change. The trials behind the bigger claims ran from 10 days to 7 weeks of daily practice. Treat the 3-Day Challenge as the opening of week 1, not a separate course — and compare your week 4 numbers with the snapshot you took before Day 1."),"three"],
 ["The 4-week programme",paras("Week 1 — Foundation: three rounds of 30 breaths, through the nose. Week 2 — Consistency: same time each day. Week 3 — Deepen: nose or mouth, and the optional squeeze. Week 4 — The full practice: four rounds of 40. Cold showers build alongside, week by week. Day 28: compare your four numbers with Day 0 and decide how to continue."),"programme"],
 ["What's normal, what's not","<p><strong>Normal:</strong> tingling, light-headedness, warmth or cold, ringing in the ears, a buzzing feeling, mild stiffness in the hands, emotion coming up.</p><p><strong>Stop and breathe normally if:</strong> you feel faint, have chest pain or palpitations, feel panicky, or your vision goes dark.</p>"+paras("If your hands cramp, you're breathing too hard. Slow down and breathe less forcefully.\nIf you faint, you went too far. Lie still, breathe normally, and go gentler next time."),"normal"],
@@ -489,6 +491,7 @@ function practiceHTML(){
   h+='<button class="btn'+(prim?'':' sec')+'" id="goFull">'+(done?'Extra session (doesn\'t count) — about ':'Full session (about ')+estimate("full")+(done?'':')')+'</button>';
   h+='<button class="btn sec" id="goShort">Short session — lighter than the method (about '+estimate("short")+')</button>';
   h+='</div>';
+  h+=readCardHTML(done);
   /* ---- cold (the book's second pillar) ---- */
   h+=coldCardHTML();
   /* ---- extras: not part of the method ---- */
@@ -501,6 +504,15 @@ function practiceHTML(){
   h+='<p class="dim">The practice stays the same each day. What changes is what you notice.</p>';
   h+='<div class="badges"><span class="badge">'+(sessDay()>=22?'About 20 min':'10–15 min daily')+'</span><span class="badge">Empty stomach, within an hour of waking</span><span class="badge">No equipment</span></div>';
   return h;
+}
+/* Today's read: points to an existing Learn section on the day it becomes relevant (no separate lesson text). */
+var READS={1:"how",2:"cold",3:"three",4:"evidence",6:"tips",8:"intention",15:"squeeze"};
+function readDay(){var td=data.sessions.filter(function(x){return x.counted&&dayKey(x.date)===dayKey();})[0];return td?td.programmeDay:null;}
+function readCardHTML(done){
+  if(!done)return '';var d=readDay(),k=d&&READS[d];if(!k)return '';
+  var m=data.meta.reads||{};if(m[d])return '';var Ls=learnSection(k);if(!Ls)return '';
+  return '<div class="card" id="readCard"><div class="hdr"><div><div class="dim" style="font-size:15px">Today\'s read · about 2 min</div><h3 style="margin:2px 0 0">'+esc(Ls[0])+'</h3></div><button class="ix" id="readX" aria-label="Dismiss today\'s read" style="background:none;border:0;color:var(--dim);font-size:24px;min-width:44px;min-height:44px">×</button></div>'+
+    '<button class="btn sec" id="readGo" data-k="'+esc(k)+'" data-d="'+d+'">Read →</button></div>';
 }
 /* What the next session will be, shown once today's is done. Mirrors dose(): 3 × 30 in weeks 1–3, 4 × 40 from day 22. */
 function tomorrowHTML(n){
@@ -562,6 +574,9 @@ function bindPractice(){
   $("goFull").onclick=function(){startFlow("full");};
   $("goShort").onclick=function(){startFlow("short");};
   var gs=$("goSub");if(gs)gs.onclick=function(){startSigh(false,5,true);};
+  function markRead(d){if(!data.meta.reads||typeof data.meta.reads!=="object")data.meta.reads={};data.meta.reads[d]=true;save();}
+  var rg=$("readGo");if(rg)rg.onclick=function(){markRead(rg.dataset.d);view=null;tab="learn";openLearn=rg.dataset.k;render();};
+  var rx=$("readX");if(rx)rx.onclick=function(){markRead(readDay());render();};
   var et=$("extrasTog");if(et)et.onclick=function(){extrasOpen=!extrasOpen;if(!extrasOpen)eveningOpen=false;render();};
   var cd=$("coldDone");if(cd)cd.onclick=function(){if(!Array.isArray(data.cold))data.cold=[];data.cold.push({date:new Date().toISOString(),seconds:coldSeconds()});save();render();};
   var cu=$("coldUndo");if(cu)cu.onclick=function(){data.cold=(data.cold||[]).filter(function(c){return dayKey(c.date)!==dayKey();});save();render();};
@@ -570,9 +585,14 @@ function bindPractice(){
 }
 
 /* ============ LEARN ============ */
+/* Learn is grouped: what you need first, what explains it, and what goes further. Same sections and text. */
+var LEARN_GROUPS=[["Start here",["what","steps","safety","normal"]],["Understand",["how","evidence","three","programme"]],["Go deeper",["cold","intention","squeeze","tips","reflection","extras"]]];
+function learnSection(k){for(var i=0;i<LEARN.length;i++)if(LEARN[i][2]===k)return LEARN[i];return null;}
 function learnHTML(){
-  var h='<h1>Learn</h1>';
-  LEARN.forEach(function(L,i){h+='<details id="L_'+L[2]+'"'+(openLearn===L[2]?' open':'')+'><summary>'+(L[2]==="sources"?'':(i+1)+'. ')+esc(L[0])+'</summary><div class="body">'+L[1]+'</div></details>';});
+  var h='<h1>Learn</h1>',num=0;
+  function item(Ls,numbered){if(!Ls)return '';if(numbered)num++;return '<details id="L_'+Ls[2]+'"'+(openLearn===Ls[2]?' open':'')+'><summary>'+(numbered?num+'. ':'')+esc(Ls[0])+'</summary><div class="body">'+Ls[1]+'</div></details>';}
+  LEARN_GROUPS.forEach(function(g){h+='<h2 class="lgrp">'+esc(g[0])+'</h2>';g[1].forEach(function(k){h+=item(learnSection(k),true);});});
+  h+='<h2 class="lgrp">Sources</h2>'+item(learnSection("sources"),false);
   return h;
 }
 function bindLearn(){if(openLearn){var el=$("L_"+openLearn);openLearn=null;if(el)setTimeout(function(){el.scrollIntoView({block:"start"});},30);}}
@@ -782,14 +802,30 @@ function T(fn,d){var id=setTimeout(fn,ms(d));timers.push(id);return id;}
 function clearT(){timers.forEach(clearTimeout);timers=[];if(S&&S.raf)cancelAnimationFrame(S.raf);}
 function sessShow(html,dark){$("sess").classList.add("show");$("sess").classList.toggle("dark",!!dark);$("sessInner").innerHTML=html;$("sess").scrollTop=0;}
 function sessHide(){$("sess").classList.remove("show","dark");flushSaveErr();$("stopBtn").style.display="none";$("tapZone").style.display="none";}
+/* Three-question safety check, shown once on the full safety screen. A wrong answer shows the right one; nothing is blocked. */
+var SAFETY_Q=[
+ ["Can you do the breathing in a bath, in a pool, or while driving?",["Yes","No"],1,"No. The hold can make you black out without warning. Only on dry land, sitting or lying down."],
+ ["Should you push the hold for as long as you can?",["Yes","No"],1,"No. Breathe in when you feel the urge. The app reminds you, and moves you on at your firm stop."],
+ ["You feel tingling and light-headed. What do you do?",["Carry on gently","Stop at once"],0,"Carry on gently. Tingling, ringing in the ears and light-headedness are normal. Stop and breathe normally only if you feel faint, have chest pain, or your vision goes dark."]];
+function safetyCheckHTML(){
+  return '<div class="card" id="sCheck"><h3 style="margin-top:0">Quick check</h3>'+SAFETY_Q.map(function(q,i){
+    return '<p style="margin-bottom:6px"><strong>'+(i+1)+'. '+esc(q[0])+'</strong></p><div class="chips" data-q="'+i+'">'+q[1].map(function(o,j){return '<button class="chip sq" data-q="'+i+'" data-a="'+j+'">'+esc(o)+'</button>';}).join("")+'</div><p class="dim sqf" id="sqf'+i+'" style="display:none"></p>';}).join("")+'</div>';
+}
+function bindSafetyCheck(){
+  document.querySelectorAll("#sCheck .sq").forEach(function(b){b.onclick=function(){
+    var q=+b.dataset.q,a=+b.dataset.a,Q=SAFETY_Q[q];
+    document.querySelectorAll('#sCheck .sq[data-q="'+q+'"]').forEach(function(x){x.classList.toggle("on",+x.dataset.a===Q[2]);x.disabled=true;});
+    var f=$("sqf"+q);f.style.display="block";f.textContent=(a===Q[2]?"Right. ":"")+Q[3];};});
+}
 function startFlow(type){
   ac();
   var D=dose(type);
   S={type:type,rounds:D.rounds,breaths:D.breaths,nose:D.nose,squeeze:D.squeeze,round:0,holds:[],capped:[],before:null,after:null,mood:[],reflection:"",intention:"",intentionText:"",running:false};
   var needFull=!data.meta.lastFullSafety||(Date.now()-new Date(data.meta.lastFullSafety).getTime())>=7*86400000;
   if(needFull){
-    sessShow('<h2>Safety</h2><p>'+esc(SAFETY_FULL)+'</p><button class="btn" id="safeOk">I\'m sitting or lying down safely</button><button class="btn sec" id="cancel">Cancel</button>');
-    $("safeOk").onclick=function(){data.meta.lastFullSafety=new Date().toISOString();save();beforeStep();};
+    sessShow('<h2>Safety</h2><p>'+esc(SAFETY_FULL)+'</p>'+(data.meta.safetyCheck?'':safetyCheckHTML())+'<button class="btn" id="safeOk">I\'m sitting or lying down safely</button><button class="btn sec" id="cancel">Cancel</button>');
+    if(!data.meta.safetyCheck)bindSafetyCheck();
+    $("safeOk").onclick=function(){data.meta.lastFullSafety=new Date().toISOString();data.meta.safetyCheck=true;save();beforeStep();};
   } else {
     sessShow('<h2>Safety</h2><p>'+esc(SAFETY_SHORT)+'</p><button class="btn" id="safeOk">Yes</button><button class="btn sec" id="cancel">Cancel</button>');
     $("safeOk").onclick=beforeStep;
