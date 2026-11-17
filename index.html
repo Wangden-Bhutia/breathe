@@ -329,7 +329,7 @@ function sanitize(o){
   st.pace=sEnum(st.pace,["normal","slow"],"normal");
   ["morningTime","middayTime","eveningTime"].forEach(function(k){st[k]=sTime(st[k]);});
   var m=o.meta;
-  m.startedAt=sDate(m.startedAt);m.lastFullSafety=sDate(m.lastFullSafety);
+  m.startedAt=sDate(m.startedAt);m.lastFullSafety=sDate(m.lastFullSafety);m.lastExport=sDate(m.lastExport);m.exportNudge=sDate(m.exportNudge);
   m.signal=strArr(m.signal);m.review28Done=sBool(m.review28Done);
   m.maintenanceMode=sEnum(m.maintenanceMode,[null,"daily","3-4","sighing"],null);
   if(has(m,"seen")){if(!m.seen||typeof m.seen!=="object"||Array.isArray(m.seen))m.seen={};else{var sn={};Object.keys(m.seen).forEach(function(k){sn[k]=sBool(m.seen[k]);});m.seen=sn;}}
@@ -356,16 +356,58 @@ function merge(d){
   ["settings","meta","baseline"].forEach(function(k){if(!out[k]||typeof out[k]!=="object"||Array.isArray(out[k]))out[k]=def[k];});
   return sanitize(out);
 }
+/* ============ STORAGE SAFETY ============
+   Your progress is never overwritten by an empty or unreadable state, a copy is kept each day, and nothing is deleted except by Reset. */
+var saveBlocked=false, loadProblem=false;
+var SNAP_KEYS=["breathe_snap_1","breathe_snap_2","breathe_snap_3"], SNAP_UNDO="breathe_snap_undo", SNAP_DAY="breathe_snapday";
+function pfx(){return testMode?"breathe_test_":"breathe_data_";}
+function lostRecords(p,o){return ["sessions","sighs","weekly","evenings","cold"].some(function(k){return p&&Array.isArray(p[k])&&p[k].length>o[k].length;});}
 function load(){
-  try{var raw=localStorage.getItem(key());return raw?merge(JSON.parse(raw)):null;}catch(e){return null;}
+  var raw=null;
+  try{raw=localStorage.getItem(key());}catch(e){return null;}
+  if(raw==null)return null;
+  var parsed,out;
+  try{
+    parsed=JSON.parse(raw);
+    if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))throw new Error("not an object");
+    out=merge(parsed);
+  }catch(e){
+    /* Unreadable: keep a copy, show the recovery screen, and do not save over it. */
+    loadProblem=true;saveBlocked=true;lsSet(pfx()+"corrupt",raw);return null;
+  }
+  /* If cleaning dropped any record, keep the original text so nothing is lost silently. */
+  try{if(lostRecords(parsed,out))lsSet(pfx()+"preclean",raw);}catch(e){}
+  return out;
 }
 var data=load();
 var firstLaunch=!data;
 if(!data) data=defaultData();
 var saveErrPending=false;
-/* During a session a failed save is reported after the session, not over it. */
-function save(){try{localStorage.setItem(key(),JSON.stringify(data));}catch(e){if(S&&(S.running||$("sess").classList.contains("show")))saveErrPending=true;else alert("Could not save data on this device.");}}
+function snapPack(raw,why){return JSON.stringify({d:new Date().toISOString(),raw:raw,why:why||""});}
+function snapInfo(p){try{var o=JSON.parse(p),d=JSON.parse(o.raw);return {d:o.d,why:o.why||"",n:(d.sessions||[]).filter(function(x){return x&&x.counted;}).length,total:(d.sessions||[]).length};}catch(e){return null;}}
+/* On the first save of each day, keep yesterday's finished state as a backup (last three days). An empty state is never kept. */
+function snapshotDaily(){
+  if(testMode)return;
+  var today=dayKey();if(lsGet(SNAP_DAY)===today)return;
+  var cur=lsGet(REAL_KEY),ok=false;
+  if(cur){try{var d=JSON.parse(cur);ok=!!(d&&Array.isArray(d.sessions)&&d.sessions.length>0);}catch(e){}}
+  if(ok){var s1=lsGet(SNAP_KEYS[0]),s2=lsGet(SNAP_KEYS[1]);if(s2)lsSet(SNAP_KEYS[2],s2);if(s1)lsSet(SNAP_KEYS[1],s1);lsSet(SNAP_KEYS[0],snapPack(cur));}
+  lsSet(SNAP_DAY,today);
+}
+function snapList(){return SNAP_KEYS.concat([SNAP_UNDO]).map(function(k){var v=lsGet(k),i=v&&snapInfo(v);return i?{k:k,i:i}:null;}).filter(Boolean);}
+function restoreSnap(k){
+  var v=lsGet(k),d;
+  try{d=merge(JSON.parse(JSON.parse(v).raw));}catch(e){alert("That backup can't be read.");return false;}
+  var cur=lsGet(REAL_KEY);if(cur&&k!==SNAP_UNDO)lsSet(SNAP_UNDO,snapPack(cur,"before restore"));
+  data=d;saveBlocked=false;loadProblem=false;firstLaunch=false;save();return true;
+}
+function save(){
+  if(saveBlocked)return;
+  try{snapshotDaily();localStorage.setItem(key(),JSON.stringify(data));}catch(e){if(S&&(S.running||$("sess").classList.contains("show")))saveErrPending=true;else alert("Could not save data on this device.");}
+}
 function flushSaveErr(){if(saveErrPending){saveErrPending=false;setTimeout(function(){alert("Could not save data on this device.");},50);}}
+/* Ask the browser to keep this data through low-storage clean-ups. */
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
 
 /* ============ HELPERS ============ */
 function $(id){return document.getElementById(id);}
@@ -519,6 +561,7 @@ function render(){
   document.body.classList.toggle("test",testMode);
   document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("on",b.dataset.tab===tab&&!view);});
   var app=$("app");
+  if(loadProblem&&saveBlocked){document.body.classList.add("noNav");app.innerHTML=recoverHTML();bindRecover();return;}
   if(view==="onboard"){document.body.classList.add("noNav");app.innerHTML=onboardHTML();bindOnboard();return;}
   document.body.classList.remove("noNav");
   if(view==="settings"){app.innerHTML=settingsHTML();bindSettings();return;}
@@ -588,13 +631,13 @@ function practiceHTML(){
   if(n===3&&done){
     h+='<p class="kicker">3-Day Challenge</p><div class="dayno word">Complete</div>';
     h+='<div class="challenge">'+[1,2,3].map(function(d){var x=data.sessions.filter(function(q){return q.counted&&q.programmeDay===d;})[0];
-      return '<div class="done"><b>Day '+d+'</b><span>'+(x&&x.before!=null?esc(x.before)+'→'+esc(x.after):'✓')+'</span></div>';}).join('')+'</div>';
+      return '<div class="done"><b>Day '+d+'</b><span>'+(x&&x.before!=null?esc(x.before)+'→'+(x.after!=null?esc(x.after):'–'):'✓')+'</span></div>';}).join('')+'</div>';
     h+='<p class="theme">Three days is a beginning, not a finish line.</p>';
   } else if(n<3){
     var names=["Breathe & Reset","Breathe & Repeat","Breathe & Continue"];
     h+='<p class="kicker">3-Day Challenge</p><div class="dayno">Day '+day+'</div><p class="theme">'+esc(names[day-1])+'</p>';
     if(n>0)h+='<div class="challenge">'+[1,2,3].map(function(d){var x=data.sessions.filter(function(q){return q.counted&&q.programmeDay===d;})[0],dn=d<=n;
-      return '<div'+(dn?' class="done"':'')+'><b>Day '+d+'</b><span>'+(dn&&x&&x.before!=null?esc(x.before)+'→'+esc(x.after):(dn?'✓':'—'))+'</span></div>';}).join('')+'</div>';
+      return '<div'+(dn?' class="done"':'')+'><b>Day '+d+'</b><span>'+(dn&&x&&x.before!=null?esc(x.before)+'→'+(x.after!=null?esc(x.after):'–'):(dn?'✓':'—'))+'</span></div>';}).join('')+'</div>';
   } else if(day<=28){
     h+='<p class="kicker">Week '+weekOf(day)+' of 4</p><div class="dayno">Day '+day+'</div><p class="theme">'+esc(tn)+'. '+esc(th[1])+'</p>';
   } else {
@@ -605,7 +648,7 @@ function practiceHTML(){
   if(!done)h+='<div class="dose">'+pipsHTML(DZ.rounds,DZ.rounds)+'<div><b>'+DZ.rounds+' rounds of '+DZ.breaths+' breaths</b>'+(DZ.nose?'<span class="sub">In through the nose</span>':'')+'</div></div>';
   if(done){
     var td=data.sessions.filter(function(x){return x.counted&&dayKey(x.date)===dayKey();})[0];
-    h+='<div class="status"><span class="okdot">'+ICON_CHECK+'</span><div><b>Done today</b><span class="sub">Stress before and after</span></div>'+(td&&td.before!=null?'<span class="score">'+esc(td.before)+' → '+esc(td.after)+'</span>':'')+'</div>';
+    h+='<div class="status"><span class="okdot">'+ICON_CHECK+'</span><div><b>Done today</b><span class="sub">Stress before and after</span></div>'+(td&&td.before!=null?'<span class="score">'+esc(td.before)+' → '+(td.after!=null?esc(td.after):'–')+'</span>':'')+'</div>';
     h+=tomorrowHTML(n);
   } else if(subToday){
     h+='<div class="status"><span class="okdot">'+ICON_CHECK+'</span><div><b>Sigh day logged</b><span class="sub">The programme moves on with your next lying-down session.</span></div></div>';
@@ -621,6 +664,7 @@ function practiceHTML(){
   h+=extrasCardHTML(n,done,subToday,sighOnly);
   if(n>=28&&data.meta.review28Done&&!data.meta.seen.maint)h+='<div class="card"><p>Four weeks done. From here, the practice is yours.</p><button class="btn sec" id="maintOk">OK</button></div>';
   if(n>=7&&!data.meta.seen.w2)h+='<div class="card"><h3>Pick your practice time</h3><p class="sub" style="margin-bottom:12px">A fixed time makes this automatic.</p><input type="time" id="mTime" value="'+esc(data.settings.morningTime||"07:00")+'"><button class="btn" id="mTimeSave">Save</button></div>';
+  h+=backupNudgeHTML();
   h+=installCardHTML();
   h+=reminderBanners();
   h+='<p class="foot">Before breakfast, on an empty stomach. No equipment.<br>The practice stays the same each day. What changes is what you notice.</p>';
@@ -695,6 +739,8 @@ function bindPractice(){
   $("goFull").onclick=function(){startFlow("full");};
   $("goShort").onclick=function(){startFlow("short");};
   var gs=$("goSub");if(gs)gs.onclick=function(){startSigh(false,5,true);};
+  var bg=$("bkGo");if(bg)bg.onclick=function(){exportData();render();};
+  var bl=$("bkLater");if(bl)bl.onclick=function(){data.meta.exportNudge=new Date().toISOString();save();render();};
   function markRead(d){if(!data.meta.reads||typeof data.meta.reads!=="object")data.meta.reads={};data.meta.reads[d]=true;save();}
   var rg=$("readGo");if(rg)rg.onclick=function(){markRead(rg.dataset.d);view=null;tab="learn";openLearn=rg.dataset.k;render();};
   var rx=$("readX");if(rx)rx.onclick=function(){markRead(readDay());render();};
@@ -769,7 +815,7 @@ function settingsHTML(){
   h+='<div class="toggle"><span>Voice cues</span>'+swHTML("sVoice",s.voiceCues,"Voice cues")+'</div>';
   h+='<div class="toggle"><span>Show hold times<br><span class="dim" style="font-size:16px">Hold times are hidden so you don\'t compete with them.</span></span>'+swHTML("sHolds",s.showHolds,"Show hold times")+'</div>';
   h+=settings2HTML();
-  h+='</div><div class="card"><h3>Data</h3><button class="btn sec" id="exp">Export data</button><button class="btn sec" id="imp">Import data</button><button class="btn danger" id="rst">Reset all data</button></div>';
+  h+='</div><div class="card"><h3>Data</h3><button class="btn sec" id="exp">Export data</button><button class="btn sec" id="imp">Import data</button><button class="btn danger" id="rst">Reset all data</button>'+dataExtraHTML()+'</div>';
   h+='<div class="card"><div class="toggle"><span>Test mode</span>'+swHTML("sTest",testMode,"Test mode")+'</div>';
   if(testMode){
     h+='<h3>Test tools</h3><p>Jump to programme day</p><div class="row"><input type="number" id="jumpN" min="0" max="60" value="4"><button class="btn sec" id="jump" style="margin:0">Jump</button></div>';
@@ -792,7 +838,7 @@ function bindSettings(){
   $("sChime").onclick=function(){s.phaseChimes=(s.phaseChimes===false);save();render();};
   $("sHolds").onclick=function(){s.showHolds=!s.showHolds;save();render();};
   bindSettings2();
-  $("exp").onclick=exportData;
+  $("exp").onclick=exportData;bindDataExtra();
   $("imp").onclick=function(){$("importFile").value="";$("importFile").click();};
   $("rst").onclick=resetFlow;
   $("sTest").onclick=function(){
@@ -849,11 +895,32 @@ function bindCal(){
       a.href=u;a.download="breathe-"+b.dataset.k+".ics";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},4000);}catch(e){}
   };});
 }
+
+function dataExtraHTML(){
+  var h='<p class="dim" id="persistTxt" style="margin-top:14px">Your progress is stored on this phone only. Download a backup now and then.</p>',L=testMode?[]:snapList();
+  if(L.length)h+='<h3 style="margin-top:18px">Automatic backups</h3><p class="dim">A copy is kept from each day you use the app, for the last three days. Restoring replaces your current progress, and you can undo it.</p>'+L.map(function(x){return '<div class="srow" style="margin:6px 0"><span>'+esc(x.k===SNAP_UNDO?"Undo ("+x.i.why+")":fmtDate(x.i.d))+'<span class="sub">'+x.i.n+' sessions counted</span></span><button class="btn sec snapR" style="width:auto;margin:0" data-k="'+x.k+'">Restore</button></div>';}).join("");
+  return h;
+}
+function bindDataExtra(){
+  document.querySelectorAll(".snapR").forEach(function(b){b.onclick=function(){if(!confirm("Replace your current progress with this backup? You can undo it afterwards."))return;if(restoreSnap(b.dataset.k)){render();alert("Restored.");}};});
+  try{if(navigator.storage&&navigator.storage.persisted)navigator.storage.persisted().then(function(p){var e=$("persistTxt");if(!e)return;
+    var t=p?"Your browser has protected this data from automatic clean-up.":"Your browser may clear stored data if the phone runs low on space.";
+    if(!p&&isIOS()&&!isStandalone())t+=" On iPhone, add Breathe to your Home Screen so Safari doesn't clear it after a week without use.";
+    e.textContent=t+" Download a backup now and then.";});}catch(e){}
+}
+function backupNudgeHTML(){
+  if(testMode||countedCount()<5)return "";
+  var le=data.meta.lastExport,nd=data.meta.exportNudge,now=Date.now(),D=14*86400000;
+  if(le&&now-new Date(le).getTime()<D)return "";
+  if(nd&&now-new Date(nd).getTime()<D)return "";
+  return '<div class="card" id="bkCard"><h3>Back up your progress</h3><p class="sub">Your progress lives only on this phone. A backup file protects it if the phone is lost or cleared.</p><button class="btn" id="bkGo">Download backup</button><button class="txtbtn" id="bkLater">Remind me in two weeks</button></div>';
+}
 function exportData(){
   try{
     var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="breathe-backup-"+dayKey()+".json";
     document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);
+    data.meta.lastExport=new Date().toISOString();save();
   }catch(e){alert("Export failed.");}
 }
 function validate(d){
@@ -875,17 +942,31 @@ $("importFile").onchange=function(e){
     var d;try{d=JSON.parse(r.result);}catch(err){alert("That file isn't valid JSON.");return;}
     if(!validate(d)){alert("That file doesn't look like a Breathe backup.");return;}
     if(!confirm("Replace all current data"+(testMode?" (test data)":"")+" with this backup? This cannot be undone."))return;
-    data=merge(d);save();firstLaunch=false;render();alert("Data imported.");
+    if(!testMode){var cur=lsGet(REAL_KEY);if(cur)lsSet(SNAP_UNDO,snapPack(cur,"before import"));}
+    data=merge(d);saveBlocked=false;loadProblem=false;save();firstLaunch=false;render();alert("Data imported. You can undo it from Settings, under Automatic backups.");
   };
   r.readAsText(f);
 };
 function resetFlow(){
-  modal('<h3>Reset all data</h3><p>Type RESET to confirm.</p><input type="text" id="rstIn" autocomplete="off"><div class="row"><button class="btn sec" id="rstNo">Cancel</button><button class="btn danger" id="rstYes">Reset</button></div>');
-  $("rstNo").onclick=closeModal;
+  modal('<h3>Reset all data</h3><p>This deletes all your progress and its automatic backups from this phone. It cannot be undone. Download a backup first if you might want it back.</p><button class="btn sec" id="rstBk">Download a backup first</button><p>Type RESET to confirm.</p><input type="text" id="rstIn" autocomplete="off"><div class="row"><button class="btn sec" id="rstNo">Cancel</button><button class="btn danger" id="rstYes">Reset</button></div>');
+  $("rstNo").onclick=closeModal;$("rstBk").onclick=exportData;
   $("rstYes").onclick=function(){
     if($("rstIn").value.trim()!=="RESET"){alert("Type RESET to confirm.");return;}
-    lsDel(key());data=defaultData();closeModal();obStep=1;view="onboard";render();
+    lsDel(key());lsDel(pfx()+"corrupt");lsDel(pfx()+"preclean");
+    if(!testMode){SNAP_KEYS.concat([SNAP_UNDO,SNAP_DAY]).forEach(lsDel);}
+    saveBlocked=false;loadProblem=false;data=defaultData();closeModal();obStep=1;view="onboard";render();
   };
+}
+
+function recoverHTML(){
+  var L=snapList(),h='<div style="padding-top:8vh"><h1>We couldn\'t read your saved progress</h1><p>Nothing has been deleted. A copy of what is stored is kept on this phone, and nothing new will be saved over it until you choose.</p>';
+  if(L.length)h+='<h3>Restore an automatic backup</h3>'+L.map(function(x){return '<div class="srow" style="margin:6px 0"><span>'+esc(x.k===SNAP_UNDO?"Undo ("+x.i.why+")":fmtDate(x.i.d))+'<span class="sub">'+x.i.n+' sessions counted</span></span><button class="btn sec snapR" style="width:auto;margin:0" data-k="'+x.k+'">Restore</button></div>';}).join("");
+  return h+'<button class="btn sec" id="rcDl">Download the unreadable copy</button><button class="btn sec" id="rcFresh">Start fresh and keep that copy</button></div>';
+}
+function bindRecover(){
+  document.querySelectorAll(".snapR").forEach(function(b){b.onclick=function(){if(restoreSnap(b.dataset.k)){view=null;render();}};});
+  $("rcDl").onclick=function(){try{var raw=lsGet(pfx()+"corrupt")||"",bl=new Blob([raw],{type:"text/plain"}),a=document.createElement("a");a.href=URL.createObjectURL(bl);a.download="breathe-unreadable-"+dayKey()+".txt";document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);}catch(e){alert("Download failed.");}};
+  $("rcFresh").onclick=function(){if(!confirm("Start with an empty record? The unreadable copy stays on this phone."))return;saveBlocked=false;loadProblem=false;firstLaunch=true;obStep=1;view="onboard";render();};
 }
 function modal(html){$("modalCard").innerHTML=html;$("modal").classList.add("show");}
 function closeModal(){$("modal").classList.remove("show");}
@@ -1105,15 +1186,24 @@ function pause(){
   function step(){if(!S||!S.running)return;left--;if($("pz"))$("pz").textContent=left;if(left>0)T(step,1000);else breathsPhase();}
   T(step,1000);
 }
+/* The session is saved the moment the breathing ends, so closing the app before the last screens cannot lose it. The after score and reflection are added to the same record. */
+function commitSession(){
+  if(S.rec)return;
+  var willCount=!countedToday(),day=willCount?countedCount()+1:Math.max(1,countedCount());
+  S.willCount=willCount;S.day=day;
+  var r={id:uid(),date:new Date().toISOString(),type:S.type,completed:true,counted:willCount,programmeDay:day,before:S.before,after:null,holds:S.holds.slice(),capped:S.capped.slice(),breaths:S.breaths,rounds:S.rounds,squeeze:!!S.squeeze,intention:S.intention||"",intentionText:"",mood:[],reflection:"",bodyScanDone:false};
+  data.sessions.push(r);S.rec=r;
+  if(!data.meta.startedAt)data.meta.startedAt=new Date().toISOString();
+  save();
+}
 function afterStep(){
-  S.running=false;S.breathDone=true;lockOff();$("stopBtn").style.display="none";
+  S.running=false;S.breathDone=true;lockOff();$("stopBtn").style.display="none";commitSession();
   sessShow('<h2>After</h2>'+sliderHTML("sAfter","How stressed do you feel right now?","1 = calm","10 = very stressed",5)+'<p class="dim">Don\'t think too long. Your first number is the honest one.</p><button class="btn" id="aNext">Next</button>');
   requireSliders(["sAfter"],"aNext");
-  $("aNext").onclick=function(){S.after=+$("sAfter").value;reflectStep();};
+  $("aNext").onclick=function(){S.after=+$("sAfter").value;S.rec.after=S.after;save();reflectStep();};
 }
 function reflectStep(){
-  var willCount=!countedToday(), day=willCount?countedCount()+1:Math.max(1,countedCount());
-  S.willCount=willCount;S.day=day;
+  var day=S.day;
   var h='<h2>Reflection</h2><div class="chips">'+MOODS.map(function(m){return '<button class="chip" data-m="'+m+'">'+m+'</button>';}).join("")+'</div>';
   h+='<p class="dim">Take a moment to notice your shift — even a small change is worth noticing.</p>';
   h+='<div class="card"><h3>'+esc(questionFor(day))+'</h3><textarea id="refl" placeholder="Optional"></textarea></div>';
@@ -1132,7 +1222,7 @@ function reflectStep(){
 }
 function finishSession(){
   S.finishedCount=true;
-  data.sessions.push({id:uid(),date:new Date().toISOString(),type:S.type,completed:true,counted:S.willCount,programmeDay:S.day,before:S.before,after:S.after,holds:S.holds.slice(),capped:S.capped.slice(),breaths:S.breaths,rounds:S.rounds,squeeze:!!S.squeeze,intention:S.intention||"",intentionText:S.intentionText||"",mood:S.mood,reflection:S.reflection,bodyScanDone:false});
+  var r=S.rec;r.after=S.after;r.intention=S.intention||"";r.intentionText=S.intentionText||"";r.mood=S.mood;r.reflection=S.reflection;
   if(!data.meta.startedAt)data.meta.startedAt=new Date().toISOString();
   save();
   var h='<div style="padding-top:14vh;text-align:center"><h1>Session complete.</h1><p class="sval">'+esc(S.before)+' → '+esc(S.after)+'</p>';
@@ -1301,10 +1391,11 @@ function runSigh(){
 function sighStop(){clearT();silence();try{speechSynthesis.cancel();}catch(e){}sighAfter();}
 function sighAfter(){
   if(!S)return;clearT();if(S.running)S.done=Math.max(0.1,Math.round((performance.now()-S.t0)*speed()/6000)/10);S.running=false;S.afterShown=true;lockOff();$("stopBtn").style.display="none";
+  if(!S.rec){S.rec={id:uid(),date:new Date().toISOString(),minutes:S.done!=null?Math.min(S.done,S.minutes):S.minutes,plannedMinutes:S.minutes,before:S.before,after:null,trigger:S.scheduled?"":S.trigger,scheduled:!!S.scheduled,sub:!!S.sub};data.sighs.push(S.rec);save();}
   sessShow('<h2>After</h2>'+sliderHTML("sgAfter","After","1 = calm","10 = very stressed",5)+'<button class="btn" id="sgSave">Save</button>');
   requireSliders(["sgAfter"],"sgSave");
   $("sgSave").onclick=function(){
-    data.sighs.push({id:uid(),date:new Date().toISOString(),minutes:S.done!=null?Math.min(S.done,S.minutes):S.minutes,plannedMinutes:S.minutes,before:S.before,after:+$("sgAfter").value,trigger:S.scheduled?"":S.trigger,scheduled:!!S.scheduled,sub:!!S.sub});
+    S.rec.after=+$("sgAfter").value;
     save();S=null;leaveSess();view=null;tab="practice";render();};
 }
 /* intention (book, WHM At-a-Glance: Mind) — replaces the body scan */
