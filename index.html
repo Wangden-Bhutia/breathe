@@ -120,7 +120,7 @@ p{margin:8px 0}
 .tick.on svg{opacity:1}
 
 /* read */
-.read{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;color:var(--ink);cursor:pointer;font:inherit;padding-right:56px}
+.read{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:none;color:var(--ink);cursor:pointer;font:inherit;padding:2px 56px 2px 0}
 .read::before{content:"";width:4px;align-self:stretch;border-radius:2px;background:var(--dawn);flex:none}
 .read .t{font-family:var(--serif);font-size:20px;line-height:1.25;display:block;font-variation-settings:"SOFT" 100}
 .readX{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mist);width:48px;height:48px;font-size:24px;cursor:pointer}
@@ -152,6 +152,9 @@ details .body a{color:var(--mint)}
 details.wk{background:var(--deep);border-radius:22px;margin:10px 0}
 details.wk>summary{background:transparent;border:0}
 details.wk .body{max-width:none;padding:0 12px 12px}
+details.more{background:var(--deep);border-radius:22px;margin:12px 0}
+details.more>summary{background:transparent;border:0}
+details.more .body{max-width:none;padding:0 12px 12px}
 details.wk .body .card{background:var(--raise);margin:8px 0;border-radius:18px;padding:14px 16px}
 
 .toggle{display:flex;justify-content:space-between;align-items:center;min-height:58px;border-bottom:1px solid var(--hair);gap:14px;padding:6px 0}
@@ -228,6 +231,12 @@ a.lnk{display:inline-flex;align-items:center;min-height:44px;min-width:44px;padd
 /* ---------- Session overlay ---------- */
 #sess{position:fixed;inset:0;z-index:60;background:var(--sea);display:none;overflow:auto}
 #sess.show{display:block}
+#stopAsk{position:fixed;inset:0;z-index:200;background:rgba(3,16,15,.84);display:flex;align-items:center;justify-content:center;padding:24px}
+#stopAsk .box{background:var(--deep);border-radius:24px;padding:26px 22px 14px;width:100%;max-width:360px}
+#stopAsk h2{margin:0 0 6px}
+.calRow{margin:6px 0 20px;display:flex;flex-direction:column;align-items:stretch}
+.calRow a.btn{text-decoration:none;margin:4px 0}
+.calRow .alt{background:none;border:0;color:var(--mist);font-size:15px;min-height:44px;padding:8px;cursor:pointer;text-align:center;text-decoration:underline}
 #sess.dark{background:#03100f;color:#6d8f8a}
 #sess .inner{max-width:560px;margin:0 auto;padding:24px 20px 40px;padding-top:max(24px, env(safe-area-inset-top));min-height:100%}
 #sess:not(.dark) .inner h2:first-child{font-size:30px;margin-top:20px}
@@ -244,7 +253,7 @@ body.test #stopBtn{top:calc(48px + env(safe-area-inset-top))}
 #tapZone .lbl{font-size:17px;margin-top:48px;color:#6f8f8a}
 .paceRow{display:flex;gap:12px;justify-content:center;margin-top:28px}
 .paceRow button{min-height:52px;min-width:120px;border-radius:999px;border:0;background:rgba(255,255,255,.05);color:#7d9c97;font-size:16px;cursor:pointer}
-.paceVal{text-align:center;color:#4f716c;font-size:15px;margin-top:12px;font-variant-numeric:tabular-nums}
+.paceVal{text-align:center;color:#6f8f8a;font-size:15px;margin-top:12px;font-variant-numeric:tabular-nums}
 .prevWrap{display:flex;justify-content:center;align-items:center;height:150px}
 .prevWrap .circle{width:56px;height:56px;font-size:20px}
 #sess.dark .inner{display:flex;flex-direction:column;justify-content:center;min-height:100%;padding:calc(72px + env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left))}
@@ -603,7 +612,8 @@ function practiceHTML(){
   }
   if(sighOnly)h+=middayCardHTML();
   var prim=!done&&!subToday&&!sighOnly;
-  h+='<button class="btn'+(prim?'':' sec')+'" id="goFull">'+(done?'Extra session':'Start session')+'<small>'+(done?'Doesn\'t count, about ':'About ')+estimate("full")+'</small></button>';
+  if(done)h+='<button class="txtbtn" id="goFull">Extra session<small>Doesn\'t count, about '+estimate("full")+'</small></button>';
+  else h+='<button class="btn'+(prim?'':' sec')+'" id="goFull">Start session<small>About '+estimate("full")+'</small></button>';
   h+='<button class="txtbtn" id="goShort">Short session<small>Lighter than the method, about '+estimate("short")+'</small></button>';
   h+='</section>';
   h+=readCardHTML(done);
@@ -665,7 +675,7 @@ function coldCardHTML(){
   for(var i=0;i<5;i++)pips+='<i'+(i<wk?' class="on"':'')+'></i>';
   return '<div class="mod cold" id="coldCard"><div class="ctop"><div class="m"><h3>Cold shower</h3><span class="qty">'+esc(fmtDur(cs))+'</span></div>'+
     '<button class="tick'+(dn?' on':'')+'" id="'+(dn?'coldUndo':'coldDone')+'" aria-pressed="'+dn+'" aria-label="'+(dn?'Cold shower done today. Tap to undo':'Mark cold shower done')+'">'+ICON_CHECK+'</button></div>'+
-    '<span class="sub">End a warm shower with cold. Never do the breathing in the shower. The book puts the benefit at water of about 15 °C (60 °F) or colder.</span>'+
+    '<span class="sub">End a warm shower with cold. Never do the breathing in the shower.</span>'+
     '<div class="week5" aria-label="'+wk+' of 5 this week">'+pips+'<span>'+wk+' of 5 this week</span></div></div>';
 }
 var extrasOpen=false;
@@ -738,7 +748,7 @@ function logHTML(){
 function sessRounds(s){return s.rounds||(s.type==="short"?2:3);}
 function coldDays(){return (data.cold||[]).length;}
 function intentionCount(){var c=data.sessions.filter(function(s){return s.completed&&s.intention;});return {done:c.filter(function(s){return s.intention==="done";}).length,of:c.length};}
-function bindLog(){drawCharts();$("viewReport").onclick=function(){view="report";render();window.scrollTo(0,0);};var t=$("notes");t.oninput=function(){data.notes=t.value;save();};}
+function bindLog(){drawCharts();var mo=document.querySelector('details.more');if(mo)mo.addEventListener('toggle',function(){if(mo.open)drawCharts();});$("viewReport").onclick=function(){view="report";render();window.scrollTo(0,0);};var t=$("notes");t.oninput=function(){data.notes=t.value;save();};}
 
 /* ============ SETTINGS ============ */
 function swHTML(id,on,label){return '<button class="sw'+(on?' on':'')+'" id="'+id+'" role="switch" aria-checked="'+on+'" aria-label="'+esc(label||id)+'"></button>';}
@@ -808,6 +818,36 @@ function previewPace(){
     P(function(){c.style.transitionTimingFunction="cubic-bezier(.15,.6,.35,1)";c.style.transform="scale(1)";tone(330,200,v*0.95,0.05);P(function(){if(n<3)one();else c.textContent="";},v*1000);},v*1000);
   }
   one();
+}
+
+/* ============ CALENDAR REMINDERS ============ */
+/* A repeating daily event the phone's own calendar can remind you about, even when the app is closed. */
+var CAL={morning:["Breathe: morning session",25,"Your morning breathing session. Sit or lie down somewhere safe, on dry land."],
+         midday:["Breathe: midday sigh drill",5,"Two minutes of cyclic sighing."],
+         evening:["Breathe: evening check-in",5,"A short evening check-in: what did you notice today?"]};
+function calStart(t){var p=String(t).split(":"),d=new Date();d.setHours(+p[0],+p[1],0,0);if(d<=new Date())d.setDate(d.getDate()+1);return d;}
+function calFmt(d){return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"T"+pad(d.getHours())+pad(d.getMinutes())+"00";}
+function calTZ(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"";}catch(e){return "";}}
+function gcalURL(k,t){var c=CAL[k],a=calStart(t),b=new Date(a.getTime()+c[1]*60000),tz=calTZ();
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(c[0])+"&dates="+calFmt(a)+"/"+calFmt(b)+"&details="+encodeURIComponent(c[2])+"&recur="+encodeURIComponent("RRULE:FREQ=DAILY")+(tz?"&ctz="+encodeURIComponent(tz):"");}
+function icsText(k,t){var c=CAL[k],a=calStart(t),b=new Date(a.getTime()+c[1]*60000),n=new Date();
+  var stamp=n.getUTCFullYear()+pad(n.getUTCMonth()+1)+pad(n.getUTCDate())+"T"+pad(n.getUTCHours())+pad(n.getUTCMinutes())+pad(n.getUTCSeconds())+"Z";
+  /* Floating local time: the reminder stays at the same clock time wherever the phone is. */
+  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Breathe//EN","CALSCALE:GREGORIAN","BEGIN:VEVENT","UID:breathe-"+k+"@breathe-app","DTSTAMP:"+stamp,"DTSTART:"+calFmt(a),"DTEND:"+calFmt(b),"RRULE:FREQ=DAILY","SUMMARY:"+c[0],"DESCRIPTION:"+c[2],"BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+c[0],"TRIGGER:PT0M","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n")+"\r\n";}
+function calPlatform(){var u=navigator.userAgent||"";if(/Android/i.test(u))return "android";if(/iPhone|iPad|iPod/i.test(u)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))return "apple";return "other";}
+function calRowHTML(k,t){
+  if(!t)return "";
+  var g='<a class="btn sec" target="_blank" rel="noopener" href="'+esc(gcalURL(k,t))+'">Add to Google Calendar</a>',
+      i='<button class="btn sec icsBtn" data-k="'+k+'" data-t="'+esc(t)+'">Add to Calendar</button>',
+      gAlt='<a class="alt" target="_blank" rel="noopener" href="'+esc(gcalURL(k,t))+'">Use Google Calendar instead</a>',
+      iAlt='<button class="alt icsBtn" data-k="'+k+'" data-t="'+esc(t)+'">Download a calendar file instead (iPhone)</button>';
+  return calPlatform()==="apple"?i+gAlt:g+iAlt;
+}
+function bindCal(){
+  document.querySelectorAll(".icsBtn").forEach(function(b){b.onclick=function(){
+    try{var blob=new Blob([icsText(b.dataset.k,b.dataset.t)],{type:"text/calendar;charset=utf-8"}),u=URL.createObjectURL(blob),a=document.createElement("a");
+      a.href=u;a.download="breathe-"+b.dataset.k+".ics";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},4000);}catch(e){}
+  };});
 }
 function exportData(){
   try{
@@ -910,8 +950,8 @@ function fillSample(){
 var S=null, timers=[];
 function T(fn,d){var id=setTimeout(fn,ms(d));timers.push(id);return id;}
 function clearT(){timers.forEach(clearTimeout);timers=[];if(S&&S.raf)cancelAnimationFrame(S.raf);}
-function sessShow(html,dark){$("sess").classList.add("show");$("sess").classList.toggle("dark",!!dark);$("sessInner").innerHTML=html;$("sess").scrollTop=0;}
-function sessHide(){$("sess").classList.remove("show","dark");flushSaveErr();$("stopBtn").style.display="none";$("tapZone").style.display="none";}
+function sessShow(html,dark){if(!(S&&S.running))closeAsk();$("sess").classList.add("show");$("sess").classList.toggle("dark",!!dark);$("sessInner").innerHTML=html;$("sess").scrollTop=0;}
+function sessHide(){closeAsk();$("sess").classList.remove("show","dark");flushSaveErr();$("stopBtn").style.display="none";$("tapZone").style.display="none";}
 /* Three-question safety check, shown once on the full safety screen. A wrong answer shows the right one; nothing is blocked. */
 var SAFETY_Q=[
  ["Can you do the breathing in a bath, in a pool, or while driving?",["Yes","No"],1,"No. The hold can make you black out without warning. Only on dry land, sitting or lying down."],
@@ -936,11 +976,10 @@ function startFlow(type){
     sessShow('<h2>Safety</h2><p>'+esc(SAFETY_FULL)+'</p>'+(data.meta.safetyCheck?'':safetyCheckHTML())+'<button class="btn" id="safeOk">I\'m sitting or lying down safely</button><button class="btn sec" id="cancel">Cancel</button>');
     if(!data.meta.safetyCheck)bindSafetyCheck();
     $("safeOk").onclick=function(){data.meta.lastFullSafety=new Date().toISOString();data.meta.safetyCheck=true;save();beforeStep();};
+    $("cancel").onclick=cancelSess;
   } else {
-    sessShow('<h2>Safety</h2><p>'+esc(SAFETY_SHORT)+'</p><button class="btn" id="safeOk">Yes</button><button class="btn sec" id="cancel">Cancel</button>');
-    $("safeOk").onclick=beforeStep;
+    beforeStep();
   }
-  $("cancel").onclick=cancelSess;
   pushSess();
 }
 /* Session overlay and the phone's back button: entering a session adds a history entry, so Back stops the session instead of leaving the app. */
@@ -952,26 +991,38 @@ window.addEventListener("popstate",function(){
   if(ignorePop){ignorePop=false;return;}
   if(!S){sessHide();return;}
   if(S.sigh){if(S.running){sighStop();pushSess();}else if(S.afterShown){pushSess();}else cancelSess();return;}
-  if(S.running){stopSession();return;}
+  if(S.running){askStop();pushSess();return;}
   if(S.breathDone){pushSess();return;} /* After/Reflection: keep the finished session, ignore Back */
   cancelSess();
 });
 function beforeStep(){
-  sessShow('<h2>Before</h2>'+sliderHTML("sBefore","How stressed do you feel right now?","1 = calm","10 = very stressed",5)+'<p class="dim">Don\'t think too long. Your first number is the honest one.</p><button class="btn" id="bNext">Next</button><button class="btn sec" id="bCancel">Cancel</button>');
-  requireSliders(["sBefore"],"bNext");
-  $("bCancel").onclick=cancelSess;
-  $("bNext").onclick=function(){S.before=+$("sBefore").value;startStep();};
-}
-function startStep(){
-  sessShow('<div style="padding-top:16vh;text-align:center"><p style="font-size:20px">Close your eyes if you like. The audio will guide you.</p>'+(S.nose?'<p style="font-size:20px">Breathe in through the nose.</p>':'')+'<p class="dim">'+S.rounds+' rounds × '+S.breaths+' breaths</p><button class="btn" id="go" style="min-height:120px;font-size:28px;border-radius:60px;margin-top:40px">Start</button><button class="btn sec" id="sCancel" style="margin-top:24px">Cancel</button></div>');
+  /* One screen: stress score, what's coming, the safety statement, and Start. Pressing Start confirms you are sitting or lying down. */
+  sessShow('<h2>Ready?</h2>'+sliderHTML("sBefore","How stressed do you feel right now?","1 = calm","10 = very stressed",5)+
+    '<p class="dim">Don\'t think too long. Your first number is the honest one.</p>'+
+    '<p>'+S.rounds+' rounds × '+S.breaths+' breaths'+(S.nose?', in through the nose':'')+'. Close your eyes if you like. The audio will guide you.</p>'+
+    '<p class="dim">Pressing Start means you are sitting or lying down, on dry land: not in a bath, shower or water, and not driving.</p>'+
+    '<button class="btn" id="go" style="min-height:84px;font-size:24px;border-radius:42px;margin-top:22px">Start</button><button class="btn sec" id="sCancel">Cancel</button>');
+  requireSliders(["sBefore"],"go");
   $("sCancel").onclick=cancelSess;
   $("go").onclick=function(){
     ac();
+    S.before=+$("sBefore").value;
+    $("go").disabled=true;$("go").textContent="Get comfortable…";
     try{if(window.speechSynthesis){var u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u);}}catch(e){}
-    unlockClips();S.running=true;lockOn();$("stopBtn").style.display="block";S.round=1;if(S.nose){say("Breathe in through the nose.");T(breathsPhase,3200);}else breathsPhase();
+    unlockClips();S.running=true;lockOn();$("stopBtn").style.display="block";S.round=1;
+    if(S.nose){say("Breathe in through the nose.");T(breathsPhase,3200);}else T(breathsPhase,3500);
   };
 }
-$("stopBtn").onclick=function(e){e.stopPropagation();if(S&&S.sigh)sighStop();else stopSession();};
+function askStop(){
+  if(!S||!S.running||$("stopAsk"))return;
+  var d=document.createElement("div");d.id="stopAsk";d.setAttribute("role","alertdialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label","End session?");
+  d.innerHTML='<div class="box"><h2>End session?</h2><p class="dim">The session keeps running until you end it.</p><button class="btn" id="keepOn">Keep going</button><button class="btn sec" id="endNow">End session</button></div>';
+  document.body.appendChild(d);
+  $("keepOn").onclick=closeAsk;$("endNow").onclick=function(){closeAsk();stopSession();};
+  $("keepOn").focus();
+}
+function closeAsk(){var d=$("stopAsk");if(d)d.remove();}
+$("stopBtn").onclick=function(e){e.stopPropagation();if(S&&S.sigh)sighStop();else askStop();};
 function stopSession(){
   if(!S)return;
   clearT();silence();try{speechSynthesis.cancel();}catch(e){}
@@ -1297,10 +1348,10 @@ function settings2HTML(){
   if(n>=14)h+='<div class="toggle"><span>Squeeze on the round 2 recovery breath<br><span class="dim" style="font-size:16px">Optional, from the book: tense the pelvic floor and draw the pressure up to the head, everything else relaxed.</span></span>'+swHTML("sSqz",!!s.squeeze,"Squeeze on the round 2 recovery breath")+'</div>';
   if(n>=14)h+='<div class="toggle"><span>Early-warning signal<br><span class="dim" style="font-size:16px">'+esc((data.meta.signal||[]).join(", ")||"Not set")+'</span></span><button class="btn sec" style="width:auto;margin:0" id="sigEdit">Edit</button></div>';
   h+='</div><div class="card"><h3>Reminders</h3>';
-  h+='<p>Morning</p><input type="time" id="tM" value="'+esc(s.morningTime||"")+'">';
-  h+='<p>Midday</p><input type="time" id="tD" value="'+esc(s.middayTime||"")+'">';
-  h+='<p>Evening</p><input type="time" id="tE" value="'+esc(s.eveningTime||"")+'">';
-  h+='<p class="dim">These times show as reminders inside the app. For an alert when the app is closed, set a phone alarm for the same times.</p>';
+  h+='<p>Morning</p><input type="time" id="tM" value="'+esc(s.morningTime||"")+'"><div class="calRow" id="cal_morning">'+calRowHTML("morning",s.morningTime)+'</div>';
+  h+='<p>Midday</p><input type="time" id="tD" value="'+esc(s.middayTime||"")+'"><div class="calRow" id="cal_midday">'+calRowHTML("midday",s.middayTime)+'</div>';
+  h+='<p>Evening</p><input type="time" id="tE" value="'+esc(s.eveningTime||"")+'"><div class="calRow" id="cal_evening">'+calRowHTML("evening",s.eveningTime)+'</div>';
+  h+='<p class="dim">These times show as reminders inside the app. To be reminded when the app is closed, add them to your calendar.</p>';
   if(data.meta.review28Done)h+='</div><div class="card"><h3>How to continue</h3>'+modeButtons();
   return h;
 }
@@ -1318,7 +1369,7 @@ function bindSettings2(){
     s.holdPrompt=p;s.holdStop=x;save();}
   $("hpIn").oninput=function(){holdUI("p");};$("hsIn").oninput=function(){holdUI("s");};
   var g=$("sigEdit");if(g)g.onclick=function(){signalFromSettings=true;view="signal";render();window.scrollTo(0,0);};
-  [["tM","morningTime"],["tD","middayTime"],["tE","eveningTime"]].forEach(function(x){$(x[0]).onchange=function(){s[x[1]]=$(x[0]).value||null;save();};});
+  [["tM","morningTime","morning"],["tD","middayTime","midday"],["tE","eveningTime","evening"]].forEach(function(x){$(x[0]).onchange=function(){s[x[1]]=$(x[0]).value||null;save();$("cal_"+x[2]).innerHTML=calRowHTML(x[2],s[x[1]]);bindCal();};});bindCal();
   bindModes(function(){render();});
 }
 
@@ -1358,6 +1409,11 @@ function progressHTML(){
   } else h+='<div class="card"><h3>Your four numbers</h3><p class="dim">Not enough data yet — this fills in after your first 7 sessions.</p></div>';
   var hasBA=data.sessions.some(function(s){return s.completed&&s.before!=null&&s.after!=null;});
   h+=hasBA?chartBox("ch2","Morning sessions","The gap shows the session's immediate effect. A falling 'before' bar over the weeks is the bigger sign.",[["Before",COLORS.before],["After",COLORS.after]]):'<div class="card"><h3>Morning sessions</h3>'+emptyMsg(1)+'</div>';
+  if(data.settings.showHolds){
+    var hs=data.sessions.filter(function(s){return s.holds&&s.holds.length;});
+    h+=hs.length?chartBox("ch6","Hold times","For interest only — not a goal. Red dots: a hold that reached your firm stop."):'<div class="card"><h3>Hold times</h3>'+emptyMsg(1)+'<p class="dim">For interest only — not a goal.</p></div>';
+  }
+  h+='<details class="more"><summary><span>More charts<span class="sub">Consistency, sighing, noticing</span></span>'+ICON_CHEV+'</summary><div class="body">';
   h+=n?chartBox("ch3","Consistency","Showing up matters more than the length of the session. Cold target: 5 days a week. Sigh bars are extras, not part of the method.",[["Full",COLORS.full],["Short",COLORS.short],["Cold",COLORS.cold],["Midday drill (extra)",COLORS.drill],["On-demand sigh (extra)",COLORS.od]]):'<div class="card"><h3>Consistency</h3>'+emptyMsg(1)+'</div>';
   var od=data.sighs.filter(function(s){return !s.scheduled;});
   if(od.length){
@@ -1369,10 +1425,7 @@ function progressHTML(){
     var E=data.evenings,pc=function(f){return Math.round(100*E.filter(f).length/E.length)+"%";};
     h+='<div class="card"><h3>Noticing</h3><div class="split"><div><b>'+pc(function(e){return e.noticedWhen==="Early";})+'</b>Early</div><div><b>'+pc(function(e){return e.noticedWhen==="Midway";})+'</b>Midway</div><div><b>'+pc(function(e){return e.noticedWhen==="Too late";})+'</b>Too late</div><div><b>'+pc(function(e){return e.signalNoticed==="Yes";})+'</b>Signal noticed</div></div><p class="dim cap">From '+E.length+' evening check-in'+(E.length>1?'s':'')+'. The trend chart appears once there are two weeks to compare. The goal is moving from \'too late\' to \'early\'.</p></div>';
   } else h+=data.evenings.length?chartBox("ch5","Noticing","The goal is moving from 'too late' to 'early'.",[["Early",COLORS.early],["Midway",COLORS.midway],["Too late",COLORS.late],["Signal noticed",COLORS.sig,1]]):'<div class="card"><h3>Noticing</h3>'+emptyMsg(4)+'</div>';
-  if(data.settings.showHolds){
-    var hs=data.sessions.filter(function(s){return s.holds&&s.holds.length;});
-    h+=hs.length?chartBox("ch6","Hold times","For interest only — not a goal. Red dots: a hold that reached your firm stop."):'<div class="card"><h3>Hold times</h3>'+emptyMsg(1)+'<p class="dim">For interest only — not a goal.</p></div>';
-  }
+  h+='</div></details>';
   h+='<button class="btn sec" id="viewReport">View report</button>';
   return h;
 }
